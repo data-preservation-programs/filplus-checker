@@ -1,0 +1,11 @@
+env:
+  es2021: true
+  node: true
+  jasmine: true
+extends: standard-with-typescript
+overrides: []
+parserOptions:
+  ecmaVersion: 2021
+  sourceType: module
+  project: tsconfig.json
+rules: {}
