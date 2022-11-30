@@ -1,4 +1,4 @@
-import { Probot } from "probot"
+import { Probot } from 'probot'
 
 /**
   example payload, for full details see comment-created-event.json
@@ -39,15 +39,14 @@ export const parseIdentifiers = (app: Probot, body: string) => {
     notaryAddress: text.match(notaryAddressMatch)?.at(0)?.split(' ')?.at(-1)?.trim(),
     clientAddress: text.match(clientAddressMatch)?.at(0)?.split(' ')?.at(-1)?.trim(),
     interplanetaryLink: text.match(interplanetaryMatch)?.at(0)?.trim(),
-    datasetIssueLink: text.match(datasetIssueMatch)?.at(0)?.trim(),
+    datasetIssueLink: text.match(datasetIssueMatch)?.at(0)?.trim()
   }
 
   for (const [key, value] of Object.entries(identifiers)) {
     if (!value) {
-      console.error(`Missing ${key} in ${identifiers}`)
-      app.log.error(`Missing ${key} in ${identifiers}`)
+      app.log.error(`failed to parse ${key}`)
     }
   }
 
-  return identifiers;
+  return identifiers
 }

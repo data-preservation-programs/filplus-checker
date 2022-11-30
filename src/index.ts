@@ -1,6 +1,6 @@
 import { ApplicationFunction, Probot } from 'probot'
 import { ApplicationFunctionOptions } from 'probot/lib/types'
-import { parseIdentifiers } from './identifiers'
+import { parseIdentifiers } from './utils'
 
 const handler: ApplicationFunction = (app: Probot, options: ApplicationFunctionOptions): void => {
   app.log('Yay, the app was loaded!')
