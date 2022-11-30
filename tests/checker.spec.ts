@@ -1,4 +1,4 @@
-import checker from "../src/checker";
+import checker from "../src/checker/checker";
 
 describe('checker', () => {
   it('should return hello world', () => {
