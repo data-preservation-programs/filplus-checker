@@ -25,9 +25,8 @@ import { Probot } from 'probot'
   * }
   * @param {Probot} app
   * @param  {string} body
-  * @returns string
 */
-export const parseIdentifiers = (app: Probot, body: string) => {
+export const parseIdentifiers = (app: Probot, body: string): Record<string, string | undefined> => {
   const text = body.replace(/[\r\n>]+/g, '')
 
   const notaryAddressMatch = /#### Multisig Notary address (f0\w+)/gi
@@ -43,7 +42,7 @@ export const parseIdentifiers = (app: Probot, body: string) => {
   }
 
   for (const [key, value] of Object.entries(identifiers)) {
-    if (!value) {
+    if (value === undefined) {
       app.log.error(`failed to parse ${key}`)
     }
   }
