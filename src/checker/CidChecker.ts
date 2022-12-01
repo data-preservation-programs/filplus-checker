@@ -204,6 +204,7 @@ export default class CidChecker {
       ['totalDealSize', { name: 'Total Deals Made', align: 'r' }],
       ['uniqueCidCount', { name: 'Unique CIDs', align: 'r' }]
     ]))
+    content.push('')
     return content.join('\n')
   }
 }

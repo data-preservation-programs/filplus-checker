@@ -1,6 +1,7 @@
 import CidChecker from "../../src/checker/CidChecker";
 import {Pool} from "pg";
 import {Issue} from "@octokit/webhooks-types";
+import * as fs from "fs";
 
 const createGeoStatement = `CREATE TABLE IF NOT EXISTS active_miners (
     miner_id TEXT NOT NULL PRIMARY KEY,
@@ -244,13 +245,15 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
     })
   })
   describe('check', () => {
-    it ('should return the markdown content', async () => {
+    it ('should return the markdown content (fake)', async () => {
       const report = await checker.check(issue)
-      console.log(report)
+      expect(report).toEqual(fs.readFileSync('tests/checker/example.md', 'utf8'))
+      fs.writeFileSync('tests/checker/example.md', report)
     })
+
     // To enable this test, make sure you have setup correct environment variables
     // PGHOST, PGPORT, PGDATABASE, PGUSER, PGPASSWORD
-    xit ('should return the markdown content', async () => {
+    xit ('should return the markdown content (real)', async () => {
       const checker = new CidChecker(new Pool(), (str: string) => { console.log(str); })
       const report = await checker.check(<any>{
         body:`# Large Dataset Notary Application
