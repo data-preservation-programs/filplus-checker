@@ -25,4 +25,13 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm run lint:nofix
+
+      - name: Setup postgreSQL
+        uses: harmon758/postgresql-action@v1
+        with:
+          postgresql version: '13'
+          postgresql db: 'postgres'
+          postgresql user: 'postgres'
+          postgresql password: 'postgres'
+
       - run: npm test

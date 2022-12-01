@@ -75,7 +75,7 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
       host: 'localhost',
       user: 'postgres',
       password: 'postgres',
-      database: 'test',
+      database: 'postgres',
     })
     checker = new CidChecker(sql, () => {});
     await sql.query("DROP TABLE IF EXISTS current_state");
