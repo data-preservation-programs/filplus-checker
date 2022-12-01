@@ -7,7 +7,7 @@
     "build": "tsc",
     "test": "jasmine-ts --config=jasmine.json",
     "dev": "nodemon --exec \"npm start\"",
-    "start": "probot run ./dist/index.js",
+    "start": "probot run ./dist/src/index.js",
     "lint": "eslint --ext ts --fix src/",
     "lint:nofix": "eslint --ext ts src/"
   },
@@ -42,6 +42,7 @@
     "typescript": "^4.9.3"
   },
   "dependencies": {
-    "probot": "^12.2.8"
+    "probot": "^12.2.8",
+    "smee-client": "^1.2.2"
   }
 }
