@@ -1,8 +1,14 @@
 import { ApplicationFunction, Probot } from 'probot'
 import { ApplicationFunctionOptions } from 'probot/lib/types'
 import { parseIdentifiers } from './utils'
+import CidChecker from './checker/CidChecker'
+import { Pool } from 'pg'
 
 const handler: ApplicationFunction = (app: Probot, options: ApplicationFunctionOptions): void => {
+  const checker = new CidChecker(
+    new Pool(), (str: string) => { app.log(str) }
+  )
+
   app.log('Yay, the app was loaded!')
   app.log('options', options)
 
@@ -12,17 +18,12 @@ const handler: ApplicationFunction = (app: Probot, options: ApplicationFunctionO
 
     if (body.match(/Stats & Info for DataCap Allocation/i) != null) {
       const { notaryAddress, clientAddress, interplanetaryLink, datasetIssueLink } = parseIdentifiers(app, body)
-
       app.log.info({ notaryAddress, clientAddress, interplanetaryLink, datasetIssueLink })
 
+      const result = await checker.check(context.payload.issue)
+
       const issueComment = context.issue({
-        body: JSON.stringify({
-          comment: 'Thanks for opening this issue!',
-          notaryAddress,
-          clientAddress,
-          interplanetaryLink,
-          datasetIssueLink
-        })
+        body: result
       })
 
       app.log.info({ issueComment })
