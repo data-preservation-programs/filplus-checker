@@ -6,7 +6,7 @@
     "build": "tsc",
     "test": "jasmine-ts --config=jasmine.json",
     "dev": "nodemon --exec \"npm start\"",
-    "start": "probot run ./dist/index.js",
+    "start": "probot run ./dist/src/index.js",
     "lint": "eslint --ext ts --fix src/",
     "lint:nofix": "eslint --ext ts src/"
   },
@@ -49,6 +49,7 @@
     "probot": "^12.2.8",
     "remark-gfm": "^1.0.0",
     "remark-stringify": "^9.0.1",
-    "xbytes": "^1.8.0"
+    "xbytes": "^1.8.0",
+    "smee-client": "^1.2.2"
   }
 }
