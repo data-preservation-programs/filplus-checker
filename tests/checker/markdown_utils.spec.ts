@@ -1,4 +1,4 @@
-import {ColumnConfig, generateGfmTable} from "../../src/checker/MarkdownUtils";
+import {ColumnConfig, generateGfmTable} from "../../src/checker/markdown_utils";
 
 describe('MarkdownUtils', () => {
   describe('generateGfmTable', () => {

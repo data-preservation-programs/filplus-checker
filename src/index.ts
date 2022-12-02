@@ -1,7 +1,7 @@
 import { ApplicationFunction, Probot } from 'probot'
 import { ApplicationFunctionOptions } from 'probot/lib/types'
 import { parseIdentifiers } from './utils'
-import { getCidChecker } from './Dependency'
+import { getCidChecker } from './dependency'
 
 const handler: ApplicationFunction = (app: Probot, options: ApplicationFunctionOptions): void => {
   app.log('Yay, the app was loaded!')
@@ -24,7 +24,9 @@ const handler: ApplicationFunction = (app: Probot, options: ApplicationFunctionO
       })
 
       app.log.info({ issueComment })
-      await context.octokit.issues.createComment(issueComment)
+      if (process.env.DRY_RUN !== 'true' && process.env.DRY_RUN !== '1') {
+        await context.octokit.issues.createComment(issueComment)
+      }
     }
   })
 }

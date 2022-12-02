@@ -1,10 +1,10 @@
 import { Pool } from 'pg'
 import { DeprecatedLogger } from 'probot/lib/types'
-import CidChecker, { FileUploadConfig } from './checker/CidChecker'
+import Cid_checker, { FileUploadConfig } from './checker/cid_checker'
 import { ProbotOctokit } from 'probot'
 
 export const pool = new Pool()
-export function getCidChecker (logger: DeprecatedLogger): CidChecker {
+export function getCidChecker (logger: DeprecatedLogger): Cid_checker {
   if (process.env.UPLOAD_REPO_OWNER === undefined ||
     process.env.UPLOAD_REPO_NAME === undefined ||
     process.env.UPLOAD_REPO_COMMITTER_NAME === undefined ||
@@ -28,7 +28,7 @@ export function getCidChecker (logger: DeprecatedLogger): CidChecker {
     log: logger.child({ name: 'uploader-octokit' })
   })
 
-  return new CidChecker(
+  return new Cid_checker(
     pool,
     octokit,
     fileUploadConfig,

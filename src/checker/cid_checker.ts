@@ -8,7 +8,7 @@ import {
   ProviderDistributionRow, ReplicationDistributionRow, CidSharingRow
 } from './types'
 import { parseIssue } from '../../dep/filecoin-verifier-tools/utils/large-issue-parser'
-import { generateGfmTable } from './MarkdownUtils'
+import { generateGfmTable } from './markdown_utils'
 import xbytes from 'xbytes'
 import emoji from 'node-emoji'
 import { Octokit } from '@octokit/core'
@@ -24,7 +24,7 @@ export interface FileUploadConfig {
   committerEmail: string
 }
 
-export default class CidChecker {
+export default class Cid_checker {
   private static readonly ProviderDistributionQuery = `
       WITH miners AS (SELECT provider, SUM(piece_size) AS total_deal_size
                       FROM current_state,
@@ -105,7 +105,7 @@ export default class CidChecker {
     return {
       clientAddress: parseResult.address,
       organizationName: parseResult.name,
-      projectName: CidChecker.getProjectNameFromTitle(issue.title)
+      projectName: Cid_checker.getProjectNameFromTitle(issue.title)
     }
   }
 
@@ -114,9 +114,9 @@ export default class CidChecker {
   }
 
   private async getStorageProviderDistribution (client: string): Promise<ProviderDistribution[]> {
-    const currentEpoch = CidChecker.getCurrentEpoch()
+    const currentEpoch = Cid_checker.getCurrentEpoch()
     const queryResult = await this.sql.query(
-      CidChecker.ProviderDistributionQuery,
+      Cid_checker.ProviderDistributionQuery,
       [client, currentEpoch])
     const distributions = queryResult.rows as ProviderDistribution[]
     const total = distributions.reduce((acc, cur) => acc + parseFloat(cur.total_deal_size), 0)
@@ -127,9 +127,9 @@ export default class CidChecker {
   }
 
   private async getReplicationDistribution (client: string): Promise<ReplicationDistribution[]> {
-    const currentEpoch = CidChecker.getCurrentEpoch()
+    const currentEpoch = Cid_checker.getCurrentEpoch()
     const queryResult = await this.sql.query(
-      CidChecker.ReplicaDistributionQuery,
+      Cid_checker.ReplicaDistributionQuery,
       [client, currentEpoch])
     const distributions = queryResult.rows as ReplicationDistribution[]
     const total = distributions.reduce((acc, cur) => acc + parseFloat(cur.total_deal_size), 0)
@@ -141,7 +141,7 @@ export default class CidChecker {
 
   private async getCidSharing (client: string): Promise<CidSharing[]> {
     const queryResult = await this.sql.query(
-      CidChecker.CidSharingQuery,
+      Cid_checker.CidSharingQuery,
       [client])
     const sharing = queryResult.rows as CidSharing[]
     return sharing
@@ -179,7 +179,7 @@ export default class CidChecker {
   public async check (event: IssueCommentCreatedEvent): Promise<string> {
     const { issue, repository } = event
     this.logger(`Checking issue #${issue.number}...`)
-    const applicationInfo = CidChecker.getApplicationInfo(issue)
+    const applicationInfo = Cid_checker.getApplicationInfo(issue)
     this.logger(`Retrieved Application Info: ${JSON.stringify(applicationInfo)}`)
     const [providerDistributions, replicationDistributions, cidSharing] = await Promise.all([
       this.getStorageProviderDistribution(applicationInfo.clientAddress),

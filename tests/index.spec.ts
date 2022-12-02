@@ -1,9 +1,9 @@
 import nock from "nock";
 import {Probot, ProbotOctokit} from "probot";
 import checkerApp from "../src";
-import * as dependency from "../src/Dependency";
+import * as dependency from "../src/dependency";
 import payload from './fixtures/comment-created-event.json'
-import {setupDatabase} from "./checker/TestSetup";
+import {setupDatabase} from "./checker/test_setup";
 
 describe('checkerApp', () => {
   let probot: Probot;
