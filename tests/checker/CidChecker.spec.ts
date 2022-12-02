@@ -3,6 +3,7 @@ import {Issue, IssueCommentCreatedEvent} from "@octokit/webhooks-types";
 import * as fs from "fs";
 import {fileUploadConfig, setupDatabase, testDatabase} from "./TestSetup";
 import nock from "nock";
+import {ProbotOctokit} from "probot";
 
 describe('CidChecker', () => {
   let checker: CidChecker
@@ -17,7 +18,9 @@ describe('CidChecker', () => {
   beforeAll(async () => {
     await setupDatabase()
     nock.disableNetConnect();
-    checker = new CidChecker(testDatabase, <any>null, fileUploadConfig, (str) => {
+    checker = new CidChecker(testDatabase, new ProbotOctokit({ auth: {
+       token: 'test-token'
+      }}), fileUploadConfig, (str) => {
       console.log(str)
     })
     issue = <any>{

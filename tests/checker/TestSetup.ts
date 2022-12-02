@@ -58,7 +58,6 @@ const insertCurrentStateStatement = `INSERT INTO current_state (deal_id, piece_c
 
 
 export const fileUploadConfig: FileUploadConfig = {
-  token: 'test',
   committerName: 'test-name',
   repo: 'test-repo',
   branch: 'test-branch',

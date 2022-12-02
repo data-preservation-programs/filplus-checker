@@ -1,6 +1,7 @@
 import nock from "nock";
 import {Probot, ProbotOctokit} from "probot";
-import checkerApp from "../src/index";
+import checkerApp from "../src";
+import * as dependency from "../src/Dependency";
 import payload from './fixtures/comment-created-event.json'
 import {setupDatabase} from "./checker/TestSetup";
 
@@ -28,28 +29,21 @@ describe('checkerApp', () => {
   it('should post a new comment when triggered', async () => {
     let newComment = ''
     const mock = nock("https://api.github.com")
-      .post("/app/installations/2/access_tokens")
-      .reply(200, {token: "test"})
-      .put(uri => uri.includes("/repos/test-owner/test-name/contents"))
-      .twice()
-      .reply(201, {content: { "download_url": "https://github.com/test-owner/test-name/blob/main/test.png" }})
       .post("/repos/testuser/cid-checker-bot/issues/1/comments", (body: any) => {
         newComment = body.body
         return true;
       })
       .reply(200);
 
+    const mockChecker = jasmine.createSpyObj('CidChecker', { check: Promise.resolve('test-content') });
+    spyOn(dependency, 'getCidChecker').and.returnValue(mockChecker)
     await probot.receive({id: '1', name: 'issue_comment', payload: <any>payload.payload});
 
     if (mock.pendingMocks().length > 0) {
-      for (const m of mock.pendingMocks()) {
-        console.error(m);
-      }
+      console.error(mock.pendingMocks())
     }
-
-    expect(mock.isDone).toBeTruthy();
-    console.log(newComment);
-    expect(newComment).toEqual('');
+    expect(mock.isDone()).toBeTruthy();
+    expect(newComment).toEqual('test-content');
   })
 
   afterEach(() => {
