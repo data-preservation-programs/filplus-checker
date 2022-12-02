@@ -13,6 +13,7 @@ import xbytes from 'xbytes'
 import emoji from 'node-emoji'
 import { Octokit } from '@octokit/core'
 import { randomUUID } from 'crypto'
+import retry from 'async-retry'
 
 export type Logger = (message: string) => void
 
@@ -24,7 +25,7 @@ export interface FileUploadConfig {
   committerEmail: string
 }
 
-export default class Cid_checker {
+export default class CidChecker {
   private static readonly ProviderDistributionQuery = `
       WITH miners AS (SELECT provider, SUM(piece_size) AS total_deal_size
                       FROM current_state,
@@ -105,7 +106,7 @@ export default class Cid_checker {
     return {
       clientAddress: parseResult.address,
       organizationName: parseResult.name,
-      projectName: Cid_checker.getProjectNameFromTitle(issue.title)
+      projectName: CidChecker.getProjectNameFromTitle(issue.title)
     }
   }
 
@@ -114,9 +115,9 @@ export default class Cid_checker {
   }
 
   private async getStorageProviderDistribution (client: string): Promise<ProviderDistribution[]> {
-    const currentEpoch = Cid_checker.getCurrentEpoch()
+    const currentEpoch = CidChecker.getCurrentEpoch()
     const queryResult = await this.sql.query(
-      Cid_checker.ProviderDistributionQuery,
+      CidChecker.ProviderDistributionQuery,
       [client, currentEpoch])
     const distributions = queryResult.rows as ProviderDistribution[]
     const total = distributions.reduce((acc, cur) => acc + parseFloat(cur.total_deal_size), 0)
@@ -127,9 +128,9 @@ export default class Cid_checker {
   }
 
   private async getReplicationDistribution (client: string): Promise<ReplicationDistribution[]> {
-    const currentEpoch = Cid_checker.getCurrentEpoch()
+    const currentEpoch = CidChecker.getCurrentEpoch()
     const queryResult = await this.sql.query(
-      Cid_checker.ReplicaDistributionQuery,
+      CidChecker.ReplicaDistributionQuery,
       [client, currentEpoch])
     const distributions = queryResult.rows as ReplicationDistribution[]
     const total = distributions.reduce((acc, cur) => acc + parseFloat(cur.total_deal_size), 0)
@@ -141,7 +142,7 @@ export default class Cid_checker {
 
   private async getCidSharing (client: string): Promise<CidSharing[]> {
     const queryResult = await this.sql.query(
-      Cid_checker.CidSharingQuery,
+      CidChecker.CidSharingQuery,
       [client])
     const sharing = queryResult.rows as CidSharing[]
     return sharing
@@ -179,12 +180,13 @@ export default class Cid_checker {
   public async check (event: IssueCommentCreatedEvent): Promise<string> {
     const { issue, repository } = event
     this.logger(`Checking issue #${issue.number}...`)
-    const applicationInfo = Cid_checker.getApplicationInfo(issue)
+    const applicationInfo = CidChecker.getApplicationInfo(issue)
     this.logger(`Retrieved Application Info: ${JSON.stringify(applicationInfo)}`)
     const [providerDistributions, replicationDistributions, cidSharing] = await Promise.all([
-      this.getStorageProviderDistribution(applicationInfo.clientAddress),
-      this.getReplicationDistribution(applicationInfo.clientAddress),
-      this.getCidSharing(applicationInfo.clientAddress)])
+      retry(async () => { return await this.getStorageProviderDistribution(applicationInfo.clientAddress) }, { retries: 3 }),
+      retry(async () => { return await this.getReplicationDistribution(applicationInfo.clientAddress) }, { retries: 3 }),
+      retry(async () => { return await this.getCidSharing(applicationInfo.clientAddress) }, { retries: 3 })
+    ])
     this.logger(`Retrieved Provider Distribution: ${JSON.stringify(providerDistributions)}`)
     this.logger(`Retrieved Replication Distribution: ${JSON.stringify(replicationDistributions)}`)
     this.logger(`Retrieved CID Sharing: ${JSON.stringify(cidSharing)}`)

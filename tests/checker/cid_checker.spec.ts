@@ -1,4 +1,4 @@
-import Cid_checker from "../../src/checker/cid_checker";
+import CidChecker from "../../src/checker/cid_checker";
 import {Issue, IssueCommentCreatedEvent} from "@octokit/webhooks-types";
 import * as fs from "fs";
 import {fileUploadConfig, setupDatabase, testDatabase} from "./test_setup";
@@ -6,7 +6,7 @@ import nock from "nock";
 import {ProbotOctokit} from "probot";
 
 describe('Cid_checker', () => {
-  let checker: Cid_checker
+  let checker: CidChecker
   let issue: Issue
   let event: IssueCommentCreatedEvent
 
@@ -18,7 +18,7 @@ describe('Cid_checker', () => {
   beforeAll(async () => {
     await setupDatabase()
     nock.disableNetConnect();
-    checker = new Cid_checker(testDatabase, new ProbotOctokit({ auth: {
+    checker = new CidChecker(testDatabase, new ProbotOctokit({ auth: {
        token: 'test-token'
       }}), fileUploadConfig, (str) => {
       console.log(str)
@@ -48,20 +48,20 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
 
   describe('getProjectNameFromTitle', () => {
     it('should return the project name', async () => {
-      expect(Cid_checker['getProjectNameFromTitle']('')).toEqual('');
-      expect(Cid_checker['getProjectNameFromTitle']('[DataCap Application] <company>')).toEqual('company');
-      expect(Cid_checker['getProjectNameFromTitle']('[DataCap Application] <company> - <project>')).toEqual('project');
-      expect(Cid_checker['getProjectNameFromTitle']('[DataCap Application] <company> - <project>')).toEqual('project');
-      expect(Cid_checker['getProjectNameFromTitle']('[DataCap Application] project')).toEqual('project');
-      expect(Cid_checker['getProjectNameFromTitle']('[DataCap Application] company - project')).toEqual('project');
-      expect(Cid_checker['getProjectNameFromTitle']('company - project')).toEqual('project');
-      expect(Cid_checker['getProjectNameFromTitle']('project')).toEqual('project');
+      expect(CidChecker['getProjectNameFromTitle']('')).toEqual('');
+      expect(CidChecker['getProjectNameFromTitle']('[DataCap Application] <company>')).toEqual('company');
+      expect(CidChecker['getProjectNameFromTitle']('[DataCap Application] <company> - <project>')).toEqual('project');
+      expect(CidChecker['getProjectNameFromTitle']('[DataCap Application] <company> - <project>')).toEqual('project');
+      expect(CidChecker['getProjectNameFromTitle']('[DataCap Application] project')).toEqual('project');
+      expect(CidChecker['getProjectNameFromTitle']('[DataCap Application] company - project')).toEqual('project');
+      expect(CidChecker['getProjectNameFromTitle']('company - project')).toEqual('project');
+      expect(CidChecker['getProjectNameFromTitle']('project')).toEqual('project');
     })
   })
 
   describe('getApplicationInfo', () => {
     it('should return the client address', () => {
-      const info = Cid_checker['getApplicationInfo'](issue)
+      const info = CidChecker['getApplicationInfo'](issue)
       expect(info).toEqual({
         clientAddress: 'f12345',
         organizationName: 'Some Company Inc',
