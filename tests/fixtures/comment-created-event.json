@@ -45,7 +45,7 @@
       "closed_at": null,
       "author_association": "OWNER",
       "active_lock_reason": null,
-      "body": "test issue",
+      "body": "# Large Dataset Notary Application\n\nTo apply for DataCap to onboard your dataset to Filecoin, please fill out the following.\n\n## Core Information\n- Organization Name: Some Company Inc\n- Website / Social Media: something dot net\n- Total amount of DataCap being requested (between 500 TiB and 5 PiB): 5 PiB\n- Weekly allocation of DataCap requested (usually between 1-100TiB): 100 TiB\n- On-chain address for first allocation: f16ioghg3qy36f6572viouwv4dqow5ejpolo4kodi",
       "reactions": {
         "url": "https://api.github.com/repos/brossetti1/cid-checker-bot/issues/1/reactions",
         "total_count": 0,

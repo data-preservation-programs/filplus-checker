@@ -1,4 +1,4 @@
-import { Issue } from '@octokit/webhooks-types'
+import { Issue, IssueCommentCreatedEvent } from '@octokit/webhooks-types'
 import { Pool } from 'pg'
 import {
   ApplicationInfo,
@@ -11,9 +11,20 @@ import { parseIssue } from '../../dep/filecoin-verifier-tools/utils/large-issue-
 import { generateGfmTable } from './MarkdownUtils'
 import xbytes from 'xbytes'
 import emoji from 'node-emoji'
+import { Octokit } from '@octokit/core'
+import { randomUUID } from 'crypto'
 
 export type TokenGenerator = () => string
 export type Logger = (message: string) => void
+
+export interface FileUploadConfig {
+  token: string
+  owner: string
+  repo: string
+  branch?: string
+  committerName: string
+  committerEmail: string
+}
 
 export default class CidChecker {
   private static readonly ProviderDistributionQuery = `
@@ -67,9 +78,14 @@ export default class CidChecker {
       GROUP BY client_address
       ORDER BY total_deal_size DESC`
 
+  private readonly octokit: Octokit
+
   public constructor (
     private readonly sql: Pool,
+    public readonly appOctokit: Octokit,
+    private readonly fileUploadConfig: FileUploadConfig,
     private readonly logger: Logger) {
+    this.octokit = new Octokit({ auth: fileUploadConfig.token })
   }
 
   private static getProjectNameFromTitle (titleStr: string): string {
@@ -136,15 +152,46 @@ export default class CidChecker {
     return sharing
   }
 
-  public async check (issue: Issue): Promise<string> {
+  private async uploadFile (path: string, base64Content: string, commitMessage: string): Promise<string> {
+    const { owner, repo } = this.fileUploadConfig
+    const response = await this.octokit.request('PUT /repos/{owner}/{repo}/contents/{path}', {
+      owner,
+      repo,
+      path,
+      message: commitMessage,
+      content: base64Content,
+      committer: {
+        name: this.fileUploadConfig.committerName,
+        email: this.fileUploadConfig.committerEmail
+      }
+    })
+    if (response.status !== 201) {
+      // https://docs.github.com/en/rest/repos/contents?apiVersion=2022-11-28#create-or-update-file-contents--status-codes
+      throw new Error(`Failed to upload file. status: ${response.status}`)
+    }
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    return response.data.content!.download_url!
+  }
+
+  private getImageForProviderDistribution (_providerDistributions: ProviderDistribution[]): string {
+    return 'iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAApgAAAKYB3X3/OAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAANCSURBVEiJtZZPbBtFFMZ/M7ubXdtdb1xSFyeilBapySVU8h8OoFaooFSqiihIVIpQBKci6KEg9Q6H9kovIHoCIVQJJCKE1ENFjnAgcaSGC6rEnxBwA04Tx43t2FnvDAfjkNibxgHxnWb2e/u992bee7tCa00YFsffekFY+nUzFtjW0LrvjRXrCDIAaPLlW0nHL0SsZtVoaF98mLrx3pdhOqLtYPHChahZcYYO7KvPFxvRl5XPp1sN3adWiD1ZAqD6XYK1b/dvE5IWryTt2udLFedwc1+9kLp+vbbpoDh+6TklxBeAi9TL0taeWpdmZzQDry0AcO+jQ12RyohqqoYoo8RDwJrU+qXkjWtfi8Xxt58BdQuwQs9qC/afLwCw8tnQbqYAPsgxE1S6F3EAIXux2oQFKm0ihMsOF71dHYx+f3NND68ghCu1YIoePPQN1pGRABkJ6Bus96CutRZMydTl+TvuiRW1m3n0eDl0vRPcEysqdXn+jsQPsrHMquGeXEaY4Yk4wxWcY5V/9scqOMOVUFthatyTy8QyqwZ+kDURKoMWxNKr2EeqVKcTNOajqKoBgOE28U4tdQl5p5bwCw7BWquaZSzAPlwjlithJtp3pTImSqQRrb2Z8PHGigD4RZuNX6JYj6wj7O4TFLbCO/Mn/m8R+h6rYSUb3ekokRY6f/YukArN979jcW+V/S8g0eT/N3VN3kTqWbQ428m9/8k0P/1aIhF36PccEl6EhOcAUCrXKZXXWS3XKd2vc/TRBG9O5ELC17MmWubD2nKhUKZa26Ba2+D3P+4/MNCFwg59oWVeYhkzgN/JDR8deKBoD7Y+ljEjGZ0sosXVTvbc6RHirr2reNy1OXd6pJsQ+gqjk8VWFYmHrwBzW/n+uMPFiRwHB2I7ih8ciHFxIkd/3Omk5tCDV1t+2nNu5sxxpDFNx+huNhVT3/zMDz8usXC3ddaHBj1GHj/As08fwTS7Kt1HBTmyN29vdwAw+/wbwLVOJ3uAD1wi/dUH7Qei66PfyuRj4Ik9is+hglfbkbfR3cnZm7chlUWLdwmprtCohX4HUtlOcQjLYCu+fzGJH2QRKvP3UNz8bWk1qMxjGTOMThZ3kvgLI5AzFfo379UAAAAASUVORK5CYII='
+  }
+
+  private getImageForReplicationDistribution (_replicationDistributions: ReplicationDistribution[]): string {
+    return 'iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAApgAAAKYB3X3/OAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAANCSURBVEiJtZZPbBtFFMZ/M7ubXdtdb1xSFyeilBapySVU8h8OoFaooFSqiihIVIpQBKci6KEg9Q6H9kovIHoCIVQJJCKE1ENFjnAgcaSGC6rEnxBwA04Tx43t2FnvDAfjkNibxgHxnWb2e/u992bee7tCa00YFsffekFY+nUzFtjW0LrvjRXrCDIAaPLlW0nHL0SsZtVoaF98mLrx3pdhOqLtYPHChahZcYYO7KvPFxvRl5XPp1sN3adWiD1ZAqD6XYK1b/dvE5IWryTt2udLFedwc1+9kLp+vbbpoDh+6TklxBeAi9TL0taeWpdmZzQDry0AcO+jQ12RyohqqoYoo8RDwJrU+qXkjWtfi8Xxt58BdQuwQs9qC/afLwCw8tnQbqYAPsgxE1S6F3EAIXux2oQFKm0ihMsOF71dHYx+f3NND68ghCu1YIoePPQN1pGRABkJ6Bus96CutRZMydTl+TvuiRW1m3n0eDl0vRPcEysqdXn+jsQPsrHMquGeXEaY4Yk4wxWcY5V/9scqOMOVUFthatyTy8QyqwZ+kDURKoMWxNKr2EeqVKcTNOajqKoBgOE28U4tdQl5p5bwCw7BWquaZSzAPlwjlithJtp3pTImSqQRrb2Z8PHGigD4RZuNX6JYj6wj7O4TFLbCO/Mn/m8R+h6rYSUb3ekokRY6f/YukArN979jcW+V/S8g0eT/N3VN3kTqWbQ428m9/8k0P/1aIhF36PccEl6EhOcAUCrXKZXXWS3XKd2vc/TRBG9O5ELC17MmWubD2nKhUKZa26Ba2+D3P+4/MNCFwg59oWVeYhkzgN/JDR8deKBoD7Y+ljEjGZ0sosXVTvbc6RHirr2reNy1OXd6pJsQ+gqjk8VWFYmHrwBzW/n+uMPFiRwHB2I7ih8ciHFxIkd/3Omk5tCDV1t+2nNu5sxxpDFNx+huNhVT3/zMDz8usXC3ddaHBj1GHj/As08fwTS7Kt1HBTmyN29vdwAw+/wbwLVOJ3uAD1wi/dUH7Qei66PfyuRj4Ik9is+hglfbkbfR3cnZm7chlUWLdwmprtCohX4HUtlOcQjLYCu+fzGJH2QRKvP3UNz8bWk1qMxjGTOMThZ3kvgLI5AzFfo379UAAAAASUVORK5CYII='
+  }
+
+  public async check (event: IssueCommentCreatedEvent): Promise<string> {
+    const { issue, repository } = event
     this.logger(`Checking issue #${issue.number}...`)
     const applicationInfo = CidChecker.getApplicationInfo(issue)
     this.logger(`Retrieved Application Info: ${JSON.stringify(applicationInfo)}`)
-    const providerDistributions = await this.getStorageProviderDistribution(applicationInfo.clientAddress)
+    const [providerDistributions, replicationDistributions, cidSharing] = await Promise.all([
+      this.getStorageProviderDistribution(applicationInfo.clientAddress),
+      this.getReplicationDistribution(applicationInfo.clientAddress),
+      this.getCidSharing(applicationInfo.clientAddress)])
     this.logger(`Retrieved Provider Distribution: ${JSON.stringify(providerDistributions)}`)
-    const replicationDistributions = await this.getReplicationDistribution(applicationInfo.clientAddress)
     this.logger(`Retrieved Replication Distribution: ${JSON.stringify(replicationDistributions)}`)
-    const cidSharing = await this.getCidSharing(applicationInfo.clientAddress)
     this.logger(`Retrieved CID Sharing: ${JSON.stringify(cidSharing)}`)
 
     const providerDistributionRows: ProviderDistributionRow[] = providerDistributions.map(distribution => {
@@ -179,6 +226,17 @@ export default class CidChecker {
       }
     })
 
+    const providerDistributionImage = this.getImageForProviderDistribution(providerDistributions)
+    const replicationDistributionImage = this.getImageForReplicationDistribution(replicationDistributions)
+    const providerDistributionImageUrl = await this.uploadFile(
+      `${repository.full_name}/issues/${issue.id}/${randomUUID()}.png`,
+      providerDistributionImage,
+      `Upload provider distribution image for issue #${issue.id} of ${repository.full_name}`)
+    const replicationDistributionImageUrl = await this.uploadFile(
+      `${repository.full_name}/issues/${issue.id}/${randomUUID()}.png`,
+      replicationDistributionImage,
+      `Upload replication distribution image for issue #${issue.id} of ${repository.full_name}`)
+
     const content: string[] = []
     content.push('## DataCap and CID Checker Report')
     content.push(` - Organization: \`${applicationInfo.organizationName}\``)
@@ -192,18 +250,23 @@ export default class CidChecker {
         ['location', { name: 'Location', align: 'r' }],
         ['percentage', { name: 'Percentage', align: 'r' }]
       ]))
+    content.push('')
+    content.push(`![Provider Distribution](${providerDistributionImageUrl})`)
     content.push('### Deal Data Replication')
     content.push(generateGfmTable(replicationDistributionRows, [
       ['numOfReplica', { name: 'Number of Replicas', align: 'r' }],
       ['totalDealSize', { name: 'Total Deals Made', align: 'r' }],
       ['percentage', { name: 'Percentage', align: 'r' }]
     ]))
+    content.push('')
+    content.push(`![Replication Distribution](${replicationDistributionImageUrl})`)
     content.push('### Deal Data Shared with other Clients')
     content.push(generateGfmTable(cidSharingRows, [
       ['otherClientAddress', { name: 'Other Client', align: 'r' }],
       ['totalDealSize', { name: 'Total Deals Made', align: 'r' }],
       ['uniqueCidCount', { name: 'Unique CIDs', align: 'r' }]
     ]))
+
     content.push('')
     return content.join('\n')
   }

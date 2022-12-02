@@ -1,64 +1,72 @@
-import CidChecker from "../../src/checker/CidChecker";
+import CidChecker, {FileUploadConfig} from "../../src/checker/CidChecker";
 import {Pool} from "pg";
-import {Issue} from "@octokit/webhooks-types";
+import {Issue, IssueCommentCreatedEvent} from "@octokit/webhooks-types";
 import * as fs from "fs";
 
-const createGeoStatement = `CREATE TABLE IF NOT EXISTS active_miners (
-    miner_id TEXT NOT NULL PRIMARY KEY,
-    last_updated INTEGER NOT NULL,
-    raw_byte_power BIGINT NOT NULL,
-    quality_adj_power BIGINT NOT NULL,
-    country TEXT,
-    region TEXT,
-    city TEXT,
-    metro INTEGER,
-    latitude REAL,
-    longitude REAL,
-    radius REAL
-)`;
-const insertGeoStatement = `INSERT INTO active_miners 
-    (miner_id, last_updated, raw_byte_power, quality_adj_power, country, region, city, metro, latitude, longitude, radius) 
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`;
-const createStatement = `CREATE TABLE IF NOT EXISTS current_state (
-    deal_id INTEGER NOT NULL PRIMARY KEY,
-    piece_cid TEXT NOT NULL,
-    piece_size BIGINT NOT NULL,
-    verified_deal BOOLEAN NOT NULL,
-    client TEXT NOT NULL,
-    provider TEXT NOT NULL,
-    label TEXT NOT NULL,
-    start_epoch INTEGER NOT NULL,
-    end_epoch INTEGER NOT NULL,
-    storage_price_per_epoch BIGINT NOT NULL,
-    provider_collateral BIGINT NOT NULL,
-    client_collateral BIGINT NOT NULL,
-    sector_start_epoch INTEGER NOT NULL,
-    last_updated_epoch INTEGER NOT NULL,
-    slash_epoch INTEGER NOT NULL
-)`;
+const createGeoStatement = `CREATE TABLE IF NOT EXISTS active_miners
+                            (
+                                miner_id          TEXT    NOT NULL PRIMARY KEY,
+                                last_updated      INTEGER NOT NULL,
+                                raw_byte_power    BIGINT  NOT NULL,
+                                quality_adj_power BIGINT  NOT NULL,
+                                country           TEXT,
+                                region            TEXT,
+                                city              TEXT,
+                                metro             INTEGER,
+                                latitude          REAL,
+                                longitude         REAL,
+                                radius            REAL
+                            )`;
+const insertGeoStatement = `INSERT INTO active_miners
+                            (miner_id, last_updated, raw_byte_power, quality_adj_power, country, region, city, metro,
+                             latitude, longitude, radius)
+                            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`;
+const createStatement = `CREATE TABLE IF NOT EXISTS current_state
+                         (
+                             deal_id                 INTEGER NOT NULL PRIMARY KEY,
+                             piece_cid               TEXT    NOT NULL,
+                             piece_size              BIGINT  NOT NULL,
+                             verified_deal           BOOLEAN NOT NULL,
+                             client                  TEXT    NOT NULL,
+                             provider                TEXT    NOT NULL,
+                             label                   TEXT    NOT NULL,
+                             start_epoch             INTEGER NOT NULL,
+                             end_epoch               INTEGER NOT NULL,
+                             storage_price_per_epoch BIGINT  NOT NULL,
+                             provider_collateral     BIGINT  NOT NULL,
+                             client_collateral       BIGINT  NOT NULL,
+                             sector_start_epoch      INTEGER NOT NULL,
+                             last_updated_epoch      INTEGER NOT NULL,
+                             slash_epoch             INTEGER NOT NULL
+                         )`;
 
-const createClientMappingStatement = `CREATE TABLE IF NOT EXISTS client_mapping (
-    client TEXT NOT NULL PRIMARY KEY,
-    client_address TEXT NOT NULL
-)`;
+const createClientMappingStatement = `CREATE TABLE IF NOT EXISTS client_mapping
+                                      (
+                                          client         TEXT NOT NULL PRIMARY KEY,
+                                          client_address TEXT NOT NULL
+                                      )`;
 
-const insertClientMappingStatement = `INSERT INTO client_mapping (client, client_address) VALUES ($1, $2)`;
+const insertClientMappingStatement = `INSERT INTO client_mapping (client, client_address)
+                                      VALUES ($1, $2)`;
 
-const insertCurrentStateStatement = `INSERT INTO current_state (
-                           deal_id, piece_cid, piece_size, verified_deal, client, 
-                           provider, label, start_epoch, end_epoch, storage_price_per_epoch, 
-                           provider_collateral, client_collateral, sector_start_epoch,
-                           last_updated_epoch, slash_epoch) VALUES 
-                                                                ($1, $2, $3, $4, $5, $6, $7, $8, $9,
-                                                                 $10, $11, $12, $13, $14, $15)`;
+const insertCurrentStateStatement = `INSERT INTO current_state (deal_id, piece_cid, piece_size, verified_deal, client,
+                                                                provider, label, start_epoch, end_epoch,
+                                                                storage_price_per_epoch,
+                                                                provider_collateral, client_collateral,
+                                                                sector_start_epoch,
+                                                                last_updated_epoch, slash_epoch)
+                                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9,
+                                             $10, $11, $12, $13, $14, $15)`;
 
 describe('CidChecker', () => {
   let sql: Pool
   let checker: CidChecker
   let issue: Issue
+  let event: IssueCommentCreatedEvent
 
   beforeAll(async () => {
-    issue = <any> {
+    issue = <any>{
+      id: 1,
       body: `# Large Dataset Notary Application
 
 To apply for DataCap to onboard your dataset to Filecoin, please fill out the following.
@@ -72,13 +80,28 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
 
 `, title: '[DataCap Application] My Company - My Project'
     }
+    event = <any> {
+      issue: issue,
+      repository: {
+        full_name: 'testowner/testrepo'
+      }
+    }
     sql = new Pool({
       host: 'localhost',
       user: 'postgres',
       password: 'postgres',
       database: 'postgres',
     })
-    checker = new CidChecker(sql, () => {});
+    const config: FileUploadConfig = {
+      token: 'test',
+      committerName: 'test',
+      repo: 'test',
+      branch: 'test',
+      committerEmail: 'test',
+      owner: 'test',
+    }
+    checker = new CidChecker(sql, <any>undefined, config, () => {
+    });
     await sql.query("DROP TABLE IF EXISTS current_state");
     await sql.query("DROP TABLE IF EXISTS client_mapping");
     await sql.query("DROP TABLE IF EXISTS active_miners");
@@ -147,7 +170,7 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
   })
 
   describe('getCidSharing', () => {
-    it ('should return the correct cid sharing', async () => {
+    it('should return the correct cid sharing', async () => {
       const sharing = await checker['getCidSharing']('fxxxx1')
       expect(sharing).toEqual([
         {
@@ -168,10 +191,10 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
     it('should return the replication distribution', async () => {
       const result = await checker['getReplicationDistribution']('fxxxx1')
       expect(result).toEqual([
-          { total_deal_size: '100', num_of_replicas: 1, percentage: 0.1 },
-          { total_deal_size: '200', num_of_replicas: 2, percentage: 0.2 },
-          { total_deal_size: '300', num_of_replicas: 3, percentage: 0.3 },
-          { total_deal_size: '400', num_of_replicas: 4, percentage: 0.4 }
+          {total_deal_size: '100', num_of_replicas: 1, percentage: 0.1},
+          {total_deal_size: '200', num_of_replicas: 2, percentage: 0.2},
+          {total_deal_size: '300', num_of_replicas: 3, percentage: 0.3},
+          {total_deal_size: '400', num_of_replicas: 4, percentage: 0.4}
         ]
       )
     })
@@ -245,18 +268,28 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
     })
   })
   describe('check', () => {
-    it ('should return the markdown content (fake)', async () => {
-      const report = await checker.check(issue)
-      expect(report).toEqual(fs.readFileSync('tests/checker/example.md', 'utf8'))
+    it('should return the markdown content (fake)', async () => {
+      const report = await checker.check(event)
+      expect(report).toEqual(fs.readFileSync('tests/fixtures/example.md', 'utf8'))
       fs.writeFileSync('tests/checker/example.md', report)
     })
 
     // To enable this test, make sure you have setup correct environment variables
     // PGHOST, PGPORT, PGDATABASE, PGUSER, PGPASSWORD
-    xit ('should return the markdown content (real)', async () => {
-      const checker = new CidChecker(new Pool(), (str: string) => { console.log(str); })
+    xit('should return the markdown content (real)', async () => {
+      const config: FileUploadConfig = {
+        token: 'test',
+        committerName: 'test',
+        repo: 'test',
+        branch: 'test',
+        committerEmail: 'test',
+        owner: 'test',
+      }
+      const checker = new CidChecker(new Pool(), <any>undefined, config, (str: string) => {
+        console.log(str);
+      })
       const report = await checker.check(<any>{
-        body:`# Large Dataset Notary Application
+        body: `# Large Dataset Notary Application
 
 To apply for DataCap to onboard your dataset to Filecoin, please fill out the following.
 
