@@ -2,10 +2,12 @@ import nock from "nock";
 import {Probot, ProbotOctokit} from "probot";
 import checkerApp from "../src/index";
 import payload from './fixtures/comment-created-event.json'
+import {setupDatabase} from "./checker/TestSetup";
 
-fdescribe('checkerApp', () => {
+describe('checkerApp', () => {
   let probot: Probot;
-  beforeEach(() => {
+  beforeEach(async () => {
+    await setupDatabase()
     process.env.UPLOAD_TOKEN = 'test-token';
     process.env.UPLOAD_REPO_OWNER = 'test-owner';
     process.env.UPLOAD_REPO_NAME = 'test-name';
@@ -30,8 +32,8 @@ fdescribe('checkerApp', () => {
       .reply(200, {token: "test"})
       .put(uri => uri.includes("/repos/test-owner/test-name/contents"))
       .twice()
-      .reply(201, {content: { "html_url": "https://github.com/test-owner/test-name/blob/main/test.png" }})
-      .post("/repos/brossetti1/cid-checker-bot/issues/1/comments", (body: any) => {
+      .reply(201, {content: { "download_url": "https://github.com/test-owner/test-name/blob/main/test.png" }})
+      .post("/repos/testuser/cid-checker-bot/issues/1/comments", (body: any) => {
         newComment = body.body
         return true;
       })

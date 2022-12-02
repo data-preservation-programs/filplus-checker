@@ -1,4 +1,4 @@
-import { ApplicationFunction, Probot } from 'probot'
+import { ApplicationFunction, Probot, ProbotOctokit } from 'probot'
 import { ApplicationFunctionOptions } from 'probot/lib/types'
 import { parseIdentifiers } from './utils'
 import CidChecker, { FileUploadConfig } from './checker/CidChecker'
@@ -15,13 +15,19 @@ const handler: ApplicationFunction = (app: Probot, options: ApplicationFunctionO
   }
 
   const fileUploadConfig: FileUploadConfig = {
-    token: process.env.UPLOAD_TOKEN,
     owner: process.env.UPLOAD_REPO_OWNER,
     repo: process.env.UPLOAD_REPO_NAME,
     branch: process.env.UPLOAD_REPO_BRANCH,
     committerName: process.env.UPLOAD_REPO_COMMITTER_NAME,
     committerEmail: process.env.UPLOAD_REPO_COMMITTER_EMAIL
   }
+
+  const octokit = new ProbotOctokit({
+    auth: {
+      token: process.env.UPLOAD_TOKEN
+    },
+    log: app.log.child({ name: 'uploader-octokit' })
+  })
 
   app.log('Yay, the app was loaded!')
   app.log('options', options)
@@ -36,7 +42,7 @@ const handler: ApplicationFunction = (app: Probot, options: ApplicationFunctionO
 
       const checker = new CidChecker(
         pool,
-        context.octokit,
+        octokit,
         fileUploadConfig,
         (str: string) => {
           app.log(str)

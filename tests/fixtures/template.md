@@ -1,14 +1,14 @@
 ## Stats & Info for DataCap Allocation
 
 #### Multisig Notary address
-> f01858410
+> f01234
 
 #### Client address
-> f1bstbq5bi72kyovhh7zoo2f6l6uivsjz4ey5dnqq
+> f12345
 
 
 #### Last two approvers
-> **kernelogic** & **cryptowhizzard**
+> **user1** & **user2**
 
 
 #### Rule to calculate the allocation request amount
@@ -23,9 +23,9 @@
 #### Datacap to be granted to reach the total amount requested by the client (5 PiB)
 > 4.65PiB
 
-#### **[Stats](https://filplus.d.interplanetary.one/clients?filter=t01943349 "Go to stats")**
+#### **[Stats](https://filplus.d.interplanetary.one/clients?filter=t01234567 "Go to stats")**
 | Number of deals  | Number of storage providers | Previous DC Allocated  |  Top provider | Remaining DC
 |---|---|---|---|---|
 | 6575  | 26  |  200TiB | 18.26  | 42.28TiB
 
-_Originally posted by @large-datacap-requests[bot] in https://github.com/filecoin-project/filecoin-plus-large-datasets/issues/917#issuecomment-1315037140_
+_Originally posted by @large-datacap-requests[bot] in https://github.com/filecoin-project/filecoin-plus-large-datasets/issues/1234#issuecomment-123456789_

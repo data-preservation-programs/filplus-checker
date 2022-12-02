@@ -14,11 +14,9 @@ import emoji from 'node-emoji'
 import { Octokit } from '@octokit/core'
 import { randomUUID } from 'crypto'
 
-export type TokenGenerator = () => string
 export type Logger = (message: string) => void
 
 export interface FileUploadConfig {
-  token: string
   owner: string
   repo: string
   branch?: string
@@ -78,14 +76,11 @@ export default class CidChecker {
       GROUP BY client_address
       ORDER BY total_deal_size DESC`
 
-  private readonly octokit: Octokit
-
   public constructor (
     private readonly sql: Pool,
-    public readonly appOctokit: Octokit,
+    private readonly octokit: Octokit,
     private readonly fileUploadConfig: FileUploadConfig,
     private readonly logger: Logger) {
-    this.octokit = new Octokit({ auth: fileUploadConfig.token })
   }
 
   private static getProjectNameFromTitle (titleStr: string): string {
