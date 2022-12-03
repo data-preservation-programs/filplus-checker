@@ -27,17 +27,33 @@ export interface FileUploadConfig {
 
 export default class CidChecker {
   private static readonly ProviderDistributionQuery = `
-      WITH miners AS (SELECT provider, SUM(piece_size) AS total_deal_size
-                      FROM current_state,
-                           client_mapping
-                      WHERE client_address = $1
-                        AND current_state.client = client_mapping.client
-                        AND verified_deal = true
-                        AND slash_epoch < 0
-                        AND (sector_start_epoch > 0 AND sector_start_epoch < $2)
-                        AND end_epoch > $2
+      WITH miner_pieces AS (SELECT provider,
+                                   piece_cid,
+                                   SUM(piece_size) AS total_deal_size,
+                                   MIN(piece_size) AS piece_size
+                            FROM current_state,
+                                 client_mapping
+                            WHERE client_address = $1
+                              AND current_state.client = client_mapping.client
+                              AND verified_deal = true
+                              AND slash_epoch < 0
+                              AND (sector_start_epoch > 0 AND sector_start_epoch < $2)
+                              AND end_epoch > $2
+                            GROUP BY provider, piece_cid),
+           miners AS (SELECT provider,
+                             SUM(total_deal_size) AS total_deal_size,
+                             SUM(piece_size)      AS unique_data_size
+                      FROM miner_pieces
                       GROUP BY provider)
-      SELECT miners.provider, total_deal_size, country, region, city, latitude, longitude
+      SELECT miners.provider,
+             total_deal_size,
+             unique_data_size,
+             total_deal_size::FLOAT / unique_data_size AS duplication_factor,
+             country,
+             region,
+             city,
+             latitude,
+             longitude
       FROM miners
                LEFT OUTER JOIN active_miners ON miners.provider = active_miners.miner_id
       ORDER BY total_deal_size DESC`
@@ -193,15 +209,18 @@ export default class CidChecker {
 
     const providerDistributionRows: ProviderDistributionRow[] = providerDistributions.map(distribution => {
       const totalDealSize = xbytes(parseFloat(distribution.total_deal_size), { iec: true })
+      const uniqueDataSize = xbytes(parseFloat(distribution.unique_data_size), { iec: true })
       let location = [distribution.city, distribution.region, distribution.country].filter(x => x).join(', ')
-      if (location === '') {
-        location = emoji.emojify(':warning: Unknown')
+      if (location === '' || location == null) {
+        location = 'Unknown'
       }
       return {
-        provider: distribution.provider,
+        provider: `[${distribution.provider}](https://filfox.info/en/address/${distribution.provider})`,
         totalDealSize,
+        uniqueDataSize,
         location,
-        percentage: `${(distribution.percentage * 100).toFixed(2)}%`
+        percentage: `${(distribution.percentage * 100).toFixed(2)}%`,
+        duplicationFactor: distribution.duplication_factor.toFixed(2)
       }
     })
 
@@ -240,15 +259,46 @@ export default class CidChecker {
     content.push(` - Project: \`${applicationInfo.projectName}\``)
     content.push(` - Client: \`${applicationInfo.clientAddress}\``)
     content.push('### Storage Provider Distribution')
+    content.push('We are looking for below common criteria for deal distribution among storage providers.')
+    content.push('If you are not meeting those criteria, please explain why.')
+    content.push(' - Storage provider should not exceed 25% of total deal size.')
+    content.push(' - Storage provider should not be storing same data more than 25%.')
+    content.push(' - Storage provider should have published its public IP address.')
+    content.push(' - The storage providers should be located in different regions.')
+    content.push(' - The GeoIP location is resolved using Maxmind GeoIP database.')
+    content.push('')
+    for (const provider of providerDistributions) {
+      const providerLink = `[${provider.provider}](https://filfox.info/en/address/${provider.provider})`
+      if (provider.percentage > 0.25) {
+        content.push(emoji.get('warning') + ` ${providerLink} has sealed more than 25% of total deals.`)
+        content.push('')
+      }
+      if (provider.duplication_factor > 1.25) {
+        content.push(emoji.get('warning') + ` ${providerLink} has sealed same data more than 25%.`)
+        content.push('')
+      }
+      if (provider.country == null || provider.country === '') {
+        content.push(emoji.get('warning') + ` ${providerLink} has unknown IP location.`)
+        content.push('')
+      }
+    }
+    if (new Set(providerDistributionRows.map(row => row.location)).size <= 1) {
+      content.push(emoji.get('warning') + ' All storage providers are located in the same region.')
+      content.push('')
+    }
+
     content.push(generateGfmTable(providerDistributionRows,
       [
         ['provider', { name: 'Provider', align: 'l' }],
-        ['totalDealSize', { name: 'Total Deals Made', align: 'r' }],
         ['location', { name: 'Location', align: 'r' }],
-        ['percentage', { name: 'Percentage', align: 'r' }]
+        ['totalDealSize', { name: 'Total Deals Made', align: 'r' }],
+        ['percentage', { name: 'Percentage', align: 'r' }],
+        ['uniqueDataSize', { name: 'Unique Data', align: 'r' }],
+        ['duplicationFactor', { name: 'Duplication Factor', align: 'r' }]
       ]))
     content.push('')
     content.push(`![Provider Distribution](${providerDistributionImageUrl})`)
+
     content.push('### Deal Data Replication')
     content.push(generateGfmTable(replicationDistributionRows, [
       ['numOfReplica', { name: 'Number of Replicas', align: 'r' }],

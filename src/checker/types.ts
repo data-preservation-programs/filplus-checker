@@ -1,6 +1,8 @@
 export interface ProviderDistribution {
   provider: string
   total_deal_size: string
+  unique_data_size: string
+  duplication_factor: number
   percentage: number
   country: string | null
   region: string | null
@@ -12,6 +14,8 @@ export interface ProviderDistribution {
 export interface ProviderDistributionRow {
   provider: string
   totalDealSize: string
+  uniqueDataSize: string
+  duplicationFactor: string
   percentage: string
   location: string
 }

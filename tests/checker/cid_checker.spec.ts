@@ -113,7 +113,9 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
           city: null,
           latitude: jasmine.any(Number),
           longitude: jasmine.any(Number),
-          percentage: 0.4
+          percentage: 0.4,
+          duplication_factor: 4,
+          unique_data_size: '100',
         },
         {
           provider: 'provider5',
@@ -123,7 +125,9 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
           city: 'Beijing',
           latitude: jasmine.any(Number),
           longitude: jasmine.any(Number),
-          percentage: 0.2
+          percentage: 0.2,
+          duplication_factor: 2,
+          unique_data_size: '100',
         },
         {
           provider: 'provider1',
@@ -133,7 +137,9 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
           city: 'San Francisco',
           latitude: jasmine.any(Number),
           longitude: jasmine.any(Number),
-          percentage: 0.1
+          percentage: 0.1,
+          duplication_factor: 1,
+          unique_data_size: '100',
         },
         {
           provider: 'provider2',
@@ -143,7 +149,9 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
           city: 'San Francisco',
           latitude: jasmine.any(Number),
           longitude: jasmine.any(Number),
-          percentage: 0.1
+          percentage: 0.1,
+          duplication_factor: 1,
+          unique_data_size: '100',
         },
         {
           provider: 'provider3',
@@ -153,7 +161,9 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
           city: 'Portland',
           latitude: jasmine.any(Number),
           longitude: jasmine.any(Number),
-          percentage: 0.1
+          percentage: 0.1,
+          duplication_factor: 1,
+          unique_data_size: '100',
         },
         {
           provider: 'provider4',
@@ -163,13 +173,15 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
           city: 'New York',
           latitude: jasmine.any(Number),
           longitude: jasmine.any(Number),
-          percentage: 0.1
+          percentage: 0.1,
+          duplication_factor: 1,
+          unique_data_size: '100',
         }
       ])
     })
   })
   describe('check', () => {
-    it('should return the markdown content (fake)', async () => {
+    fit('should return the markdown content (fake)', async () => {
       const mock = nock("https://api.github.com")
         .put(uri => uri.includes("/repos/test-owner/test-repo/contents"))
         .reply(201, {content: { "download_url": "./provider.png" }})
