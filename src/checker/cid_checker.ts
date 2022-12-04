@@ -11,9 +11,10 @@ import { parseIssue } from '../../dep/filecoin-verifier-tools/utils/large-issue-
 import { generateGfmTable } from './markdown_utils'
 import xbytes from 'xbytes'
 import emoji from 'node-emoji'
-import { Octokit } from '@octokit/core'
 import { randomUUID } from 'crypto'
 import retry from 'async-retry'
+import { Octokit } from '@octokit/core'
+import { RestEndpointMethodTypes } from '@octokit/plugin-rest-endpoint-methods'
 
 export type Logger = (message: string) => void
 
@@ -23,6 +24,7 @@ export interface FileUploadConfig {
   branch?: string
   committerName: string
   committerEmail: string
+  searchRepo: string
 }
 
 export default class CidChecker {
@@ -127,7 +129,8 @@ export default class CidChecker {
     return {
       clientAddress: parseResult.address,
       organizationName: parseResult.name,
-      projectName: CidChecker.getProjectNameFromTitle(issue.title)
+      projectName: CidChecker.getProjectNameFromTitle(issue.title),
+      url: issue.html_url
     }
   }
 
@@ -171,7 +174,9 @@ export default class CidChecker {
 
   private async uploadFile (path: string, base64Content: string, commitMessage: string): Promise<string> {
     const { owner, repo } = this.fileUploadConfig
-    const response = await this.octokit.request('PUT /repos/{owner}/{repo}/contents/{path}', {
+    type Params = RestEndpointMethodTypes['repos']['createOrUpdateFileContents']['parameters']
+    type Response = RestEndpointMethodTypes['repos']['createOrUpdateFileContents']['response']
+    const params: Params = {
       owner,
       repo,
       path,
@@ -181,11 +186,13 @@ export default class CidChecker {
         name: this.fileUploadConfig.committerName,
         email: this.fileUploadConfig.committerEmail
       }
-    })
+    }
+    const response: Response = await this.octokit.request('PUT /repos/{owner}/{repo}/contents/{path}', params)
     if (response.status !== 201) {
       // https://docs.github.com/en/rest/repos/contents?apiVersion=2022-11-28#create-or-update-file-contents--status-codes
       throw new Error(`Failed to upload file. status: ${response.status}`)
     }
+
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     return response.data.content!.download_url!
   }
@@ -196,6 +203,26 @@ export default class CidChecker {
 
   private getImageForReplicationDistribution (_replicationDistributions: ReplicationDistribution[]): string {
     return 'iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAApgAAAKYB3X3/OAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAANCSURBVEiJtZZPbBtFFMZ/M7ubXdtdb1xSFyeilBapySVU8h8OoFaooFSqiihIVIpQBKci6KEg9Q6H9kovIHoCIVQJJCKE1ENFjnAgcaSGC6rEnxBwA04Tx43t2FnvDAfjkNibxgHxnWb2e/u992bee7tCa00YFsffekFY+nUzFtjW0LrvjRXrCDIAaPLlW0nHL0SsZtVoaF98mLrx3pdhOqLtYPHChahZcYYO7KvPFxvRl5XPp1sN3adWiD1ZAqD6XYK1b/dvE5IWryTt2udLFedwc1+9kLp+vbbpoDh+6TklxBeAi9TL0taeWpdmZzQDry0AcO+jQ12RyohqqoYoo8RDwJrU+qXkjWtfi8Xxt58BdQuwQs9qC/afLwCw8tnQbqYAPsgxE1S6F3EAIXux2oQFKm0ihMsOF71dHYx+f3NND68ghCu1YIoePPQN1pGRABkJ6Bus96CutRZMydTl+TvuiRW1m3n0eDl0vRPcEysqdXn+jsQPsrHMquGeXEaY4Yk4wxWcY5V/9scqOMOVUFthatyTy8QyqwZ+kDURKoMWxNKr2EeqVKcTNOajqKoBgOE28U4tdQl5p5bwCw7BWquaZSzAPlwjlithJtp3pTImSqQRrb2Z8PHGigD4RZuNX6JYj6wj7O4TFLbCO/Mn/m8R+h6rYSUb3ekokRY6f/YukArN979jcW+V/S8g0eT/N3VN3kTqWbQ428m9/8k0P/1aIhF36PccEl6EhOcAUCrXKZXXWS3XKd2vc/TRBG9O5ELC17MmWubD2nKhUKZa26Ba2+D3P+4/MNCFwg59oWVeYhkzgN/JDR8deKBoD7Y+ljEjGZ0sosXVTvbc6RHirr2reNy1OXd6pJsQ+gqjk8VWFYmHrwBzW/n+uMPFiRwHB2I7ih8ciHFxIkd/3Omk5tCDV1t+2nNu5sxxpDFNx+huNhVT3/zMDz8usXC3ddaHBj1GHj/As08fwTS7Kt1HBTmyN29vdwAw+/wbwLVOJ3uAD1wi/dUH7Qei66PfyuRj4Ik9is+hglfbkbfR3cnZm7chlUWLdwmprtCohX4HUtlOcQjLYCu+fzGJH2QRKvP3UNz8bWk1qMxjGTOMThZ3kvgLI5AzFfo379UAAAAASUVORK5CYII='
+  }
+
+  private async findIssueForClient (client: string): Promise<ApplicationInfo[]> {
+    type Params = RestEndpointMethodTypes['search']['issuesAndPullRequests']['parameters']
+    type Response = RestEndpointMethodTypes['search']['issuesAndPullRequests']['response']
+    const params: Params = {
+      q: `repo:${this.fileUploadConfig.searchRepo} is:issue ${client}`
+    }
+    const response: Response = await this.octokit.request('GET /search/issues', params)
+
+    const result = []
+    for (const item of response.data.items) {
+      const issue = item as Issue
+      const info = CidChecker.getApplicationInfo(issue)
+      if (info.clientAddress === client) {
+        result.push(info)
+      }
+    }
+
+    return result
   }
 
   public async check (event: IssueCommentCreatedEvent): Promise<string> {
@@ -246,14 +273,21 @@ export default class CidChecker {
       }
     })
 
-    const cidSharingRows: CidSharingRow[] = cidSharing.map(share => {
-      const totalDealSize = xbytes(parseFloat(share.total_deal_size), { iec: true })
-      return {
-        otherClientAddress: share.other_client_address,
-        totalDealSize,
-        uniqueCidCount: share.unique_cid_count.toLocaleString('en-US')
-      }
-    })
+    const cidSharingRows: CidSharingRow[] = await Promise.all(
+      cidSharing.map(
+        async (share) => {
+          const totalDealSize = xbytes(parseFloat(share.total_deal_size), { iec: true })
+          const otherApplications = await this.findIssueForClient(share.other_client_address)
+          return {
+            otherClientAddress: share.other_client_address,
+            totalDealSize,
+            uniqueCidCount: share.unique_cid_count.toLocaleString('en-US'),
+            otherClientOrganizationNames: otherApplications.map(x => x.organizationName).join('<br/>'),
+            otherClientProjectNames: otherApplications.map(x => `[${x.projectName}](${x.url})`).join('<br/>')
+          }
+        }
+      )
+    )
 
     const providerDistributionImage = this.getImageForProviderDistribution(providerDistributions)
     const replicationDistributionImage = this.getImageForReplicationDistribution(replicationDistributions)
@@ -342,6 +376,8 @@ export default class CidChecker {
       content.push('')
       content.push(generateGfmTable(cidSharingRows, [
         ['otherClientAddress', { name: 'Other Client', align: 'r' }],
+        ['otherClientOrganizationNames', { name: 'Organizations', align: 'l' }],
+        ['otherClientProjectNames', { name: 'Projects', align: 'l' }],
         ['totalDealSize', { name: 'Total Deals Made', align: 'r' }],
         ['uniqueCidCount', { name: 'Unique CIDs', align: 'r' }]
       ]))

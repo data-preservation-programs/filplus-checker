@@ -44,10 +44,13 @@ export interface CidSharingRow {
   totalDealSize: string
   uniqueCidCount: string
   otherClientAddress: string
+  otherClientOrganizationNames: string
+  otherClientProjectNames: string
 }
 
 export interface ApplicationInfo {
   organizationName: string
   clientAddress: string
   projectName: string
+  url: string
 }

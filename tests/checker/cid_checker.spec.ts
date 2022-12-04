@@ -24,6 +24,7 @@ describe('Cid_checker', () => {
       console.log(str)
     })
     issue = <any>{
+      html_url: 'test-url',
       id: 1,
       body: `# Large Dataset Notary Application
 
@@ -66,6 +67,7 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
         clientAddress: 'f12345',
         organizationName: 'Some Company Inc',
         projectName: 'My Project',
+        url: 'test-url'
       })
     })
   })
@@ -92,10 +94,18 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
     it('should return the replication distribution', async () => {
       const result = await checker['getReplicationDistribution']('f12345')
       expect(result).toEqual([
-          {total_deal_size: '100', num_of_replicas: 1, percentage: 0.1},
-          {total_deal_size: '200', num_of_replicas: 2, percentage: 0.2},
-          {total_deal_size: '300', num_of_replicas: 3, percentage: 0.3},
-          {total_deal_size: '400', num_of_replicas: 4, percentage: 0.4}
+          {
+            total_deal_size: '700',
+            unique_data_size: '300',
+            num_of_replicas: 1,
+            percentage: 0.7
+          },
+          {
+            total_deal_size: '300',
+            unique_data_size: '100',
+            num_of_replicas: 3,
+            percentage: 0.3
+          }
         ]
       )
     })
@@ -181,15 +191,26 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
     })
   })
   describe('check', () => {
-    fit('should return the markdown content (fake)', async () => {
+    it('should return the markdown content (fake)', async () => {
+      const issue2 = JSON.parse(JSON.stringify(issue))
+      issue2.body = issue2.body.replace('f12345', 'fxxxx2')
+      issue2.title = issue2.title.replace('My Project', 'My Project2')
+      const issue3 = JSON.parse(JSON.stringify(issue))
+      issue3.body = issue3.body.replace('f12345', 'fxxxx3')
+      issue3.title = issue3.title.replace('My Project', 'My Project3')
+
       const mock = nock("https://api.github.com")
         .put(uri => uri.includes("/repos/test-owner/test-repo/contents"))
         .reply(201, {content: { "download_url": "./provider.png" }})
         .put(uri => uri.includes("/repos/test-owner/test-repo/contents"))
-        .reply(201, {content: { "download_url": "./replica.png" }});
+        .reply(201, {content: { "download_url": "./replica.png" }})
+        .get(uri => uri.includes("issue%20fxxxx3"))
+        .reply(200, {items: [issue3]})
+        .get(uri => uri.includes("issue%20fxxxx2"))
+        .reply(200, {items: [issue2]})
       const report = await checker.check(event)
       expect(mock.isDone()).toBeTruthy()
-      // fs.writeFileSync('tests/fixtures/expected.md', report)
+      //fs.writeFileSync('tests/fixtures/expected.md', report)
       expect(report).toEqual(fs.readFileSync('tests/fixtures/expected.md', 'utf8'))
     })
   })

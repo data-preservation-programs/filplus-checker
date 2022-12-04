@@ -63,6 +63,7 @@ export const fileUploadConfig: FileUploadConfig = {
   branch: 'test-branch',
   committerEmail: 'test-email',
   owner: 'test-owner',
+  searchRepo: 'test-search-repo',
 }
 
 let initialized = false;
