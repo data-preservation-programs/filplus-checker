@@ -22,12 +22,14 @@ export interface ProviderDistributionRow {
 
 export interface ReplicationDistribution {
   num_of_replicas: number
+  unique_data_size: string
   total_deal_size: string
   percentage: number
 }
 
 export interface ReplicationDistributionRow {
   numOfReplica: number
+  uniqueDataSize: string
   totalDealSize: string
   percentage: string
 }

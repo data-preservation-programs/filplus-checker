@@ -3,13 +3,12 @@
  - Project: `My Project`
  - Client: `f12345`
 ### Storage Provider Distribution
-We are looking for below common criteria for deal distribution among storage providers.
-If you are not meeting those criteria, please explain why.
+The below table shows the distribution of storage providers that have stored data for this client.
+For most of the datacap application, below restrictions should apply. GeoIP locations are resolved with Maxmind GeoIP database.
  - Storage provider should not exceed 25% of total deal size.
  - Storage provider should not be storing same data more than 25%.
  - Storage provider should have published its public IP address.
  - The storage providers should be located in different regions.
- - The GeoIP location is resolved using Maxmind GeoIP database.
 
 ⚠️ [provider0](https://filfox.info/en/address/provider0) has sealed more than 25% of total deals.
 
@@ -30,15 +29,24 @@ If you are not meeting those criteria, please explain why.
 
 ![Provider Distribution](./provider.png)
 ### Deal Data Replication
-| Number of Replicas | Total Deals Made | Percentage |
-| -----------------: | ---------------: | ---------: |
-|                  1 |         100.00 B |     10.00% |
-|                  2 |         200.00 B |     20.00% |
-|                  3 |         300.00 B |     30.00% |
-|                  4 |         400.00 B |     40.00% |
+The below table shows how each many unique data are replicated across storage providers.
+For most of the datacap application, the number of replicas should be more than 3.
+
+⚠️ 100.00 of deals are for data replicated across less than 4 storage providers.
+
+
+| Number of Replicas | Unique Data Size | Total Deals Made | Deal Percentage |
+| -----------------: | ---------------: | ---------------: | --------------: |
+|                  1 |         300.00 B |         700.00 B |          70.00% |
+|                  3 |         100.00 B |         300.00 B |          30.00% |
 
 ![Replication Distribution](./replica.png)
 ### Deal Data Shared with other Clients
+The below table shows how many unique data are shared with other clients.
+Usually different applications owns different data and should not resolve to the same CID.
+
+⚠️ CID sharing has been observed.
+
 | Other Client | Total Deals Made | Unique CIDs |
 | -----------: | ---------------: | ----------: |
 |       fxxxx3 |         200.00 B |           2 |

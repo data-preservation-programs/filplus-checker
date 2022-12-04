@@ -59,7 +59,10 @@ export default class CidChecker {
       ORDER BY total_deal_size DESC`
 
   private static readonly ReplicaDistributionQuery = `
-      WITH replicas AS (SELECT COUNT(*) AS num_of_replicas, SUM(piece_size) AS total_deal_size, piece_cid
+      WITH replicas AS (SELECT COUNT(DISTINCT provider) AS num_of_replicas,
+                               SUM(piece_size)          AS total_deal_size,
+                               MAX(piece_size)          AS piece_size,
+                               piece_cid
                         FROM current_state,
                              client_mapping
                         WHERE client_address = $1
@@ -69,7 +72,9 @@ export default class CidChecker {
                           AND (sector_start_epoch > 0 AND sector_start_epoch < $2)
                           AND end_epoch > $2
                         GROUP BY piece_cid)
-      SELECT SUM(total_deal_size) AS total_deal_size, num_of_replicas::INT
+      SELECT SUM(total_deal_size) AS total_deal_size,
+             SUM(piece_size)      AS unique_data_size,
+             num_of_replicas::INT
       FROM replicas
       GROUP BY num_of_replicas
       ORDER BY num_of_replicas ASC`
@@ -199,9 +204,15 @@ export default class CidChecker {
     const applicationInfo = CidChecker.getApplicationInfo(issue)
     this.logger(`Retrieved Application Info: ${JSON.stringify(applicationInfo)}`)
     const [providerDistributions, replicationDistributions, cidSharing] = await Promise.all([
-      retry(async () => { return await this.getStorageProviderDistribution(applicationInfo.clientAddress) }, { retries: 3 }),
-      retry(async () => { return await this.getReplicationDistribution(applicationInfo.clientAddress) }, { retries: 3 }),
-      retry(async () => { return await this.getCidSharing(applicationInfo.clientAddress) }, { retries: 3 })
+      retry(async () => {
+        return await this.getStorageProviderDistribution(applicationInfo.clientAddress)
+      }, { retries: 3 }),
+      retry(async () => {
+        return await this.getReplicationDistribution(applicationInfo.clientAddress)
+      }, { retries: 3 }),
+      retry(async () => {
+        return await this.getCidSharing(applicationInfo.clientAddress)
+      }, { retries: 3 })
     ])
     this.logger(`Retrieved Provider Distribution: ${JSON.stringify(providerDistributions)}`)
     this.logger(`Retrieved Replication Distribution: ${JSON.stringify(replicationDistributions)}`)
@@ -226,9 +237,11 @@ export default class CidChecker {
 
     const replicationDistributionRows: ReplicationDistributionRow[] = replicationDistributions.map(distribution => {
       const totalDealSize = xbytes(parseFloat(distribution.total_deal_size), { iec: true })
+      const uniqueDataSize = xbytes(parseFloat(distribution.unique_data_size), { iec: true })
       return {
         numOfReplica: distribution.num_of_replicas,
         totalDealSize,
+        uniqueDataSize,
         percentage: `${(distribution.percentage * 100).toFixed(2)}%`
       }
     })
@@ -259,13 +272,12 @@ export default class CidChecker {
     content.push(` - Project: \`${applicationInfo.projectName}\``)
     content.push(` - Client: \`${applicationInfo.clientAddress}\``)
     content.push('### Storage Provider Distribution')
-    content.push('We are looking for below common criteria for deal distribution among storage providers.')
-    content.push('If you are not meeting those criteria, please explain why.')
+    content.push('The below table shows the distribution of storage providers that have stored data for this client.')
+    content.push('For most of the datacap application, below restrictions should apply. GeoIP locations are resolved with Maxmind GeoIP database.')
     content.push(' - Storage provider should not exceed 25% of total deal size.')
     content.push(' - Storage provider should not be storing same data more than 25%.')
     content.push(' - Storage provider should have published its public IP address.')
     content.push(' - The storage providers should be located in different regions.')
-    content.push(' - The GeoIP location is resolved using Maxmind GeoIP database.')
     content.push('')
     for (const provider of providerDistributions) {
       const providerLink = `[${provider.provider}](https://filfox.info/en/address/${provider.provider})`
@@ -300,19 +312,42 @@ export default class CidChecker {
     content.push(`![Provider Distribution](${providerDistributionImageUrl})`)
 
     content.push('### Deal Data Replication')
+    content.push('The below table shows how each many unique data are replicated across storage providers.')
+    content.push('For most of the datacap application, the number of replicas should be more than 3.')
+    content.push('')
+    const lowReplicaPercentage = replicationDistributions
+      .filter(distribution => distribution.num_of_replicas <= 3)
+      .map(distribution => distribution.percentage)
+      .reduce((a, b) => a + b, 0)
+    if (lowReplicaPercentage > 0.25) {
+      content.push(emoji.get('warning') + ` ${(lowReplicaPercentage * 100).toFixed(2)} of deals are for data replicated across less than 4 storage providers.`)
+      content.push('')
+    }
+    content.push('')
     content.push(generateGfmTable(replicationDistributionRows, [
       ['numOfReplica', { name: 'Number of Replicas', align: 'r' }],
+      ['uniqueDataSize', { name: 'Unique Data Size', align: 'r' }],
       ['totalDealSize', { name: 'Total Deals Made', align: 'r' }],
-      ['percentage', { name: 'Percentage', align: 'r' }]
+      ['percentage', { name: 'Deal Percentage', align: 'r' }]
     ]))
     content.push('')
+
     content.push(`![Replication Distribution](${replicationDistributionImageUrl})`)
     content.push('### Deal Data Shared with other Clients')
-    content.push(generateGfmTable(cidSharingRows, [
-      ['otherClientAddress', { name: 'Other Client', align: 'r' }],
-      ['totalDealSize', { name: 'Total Deals Made', align: 'r' }],
-      ['uniqueCidCount', { name: 'Unique CIDs', align: 'r' }]
-    ]))
+    content.push('The below table shows how many unique data are shared with other clients.')
+    content.push('Usually different applications owns different data and should not resolve to the same CID.')
+    content.push('')
+    if (cidSharingRows.length > 0) {
+      content.push(emoji.get('warning') + ' CID sharing has been observed.')
+      content.push('')
+      content.push(generateGfmTable(cidSharingRows, [
+        ['otherClientAddress', { name: 'Other Client', align: 'r' }],
+        ['totalDealSize', { name: 'Total Deals Made', align: 'r' }],
+        ['uniqueCidCount', { name: 'Unique CIDs', align: 'r' }]
+      ]))
+    } else {
+      content.push(emoji.get('white_check_mark') + ' No CID sharing has been observed.')
+    }
 
     content.push('')
     return content.join('\n')
