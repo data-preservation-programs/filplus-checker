@@ -8,7 +8,7 @@ import {
   ProviderDistributionRow, ReplicationDistributionRow, CidSharingRow
 } from './types'
 import { parseIssue } from '../../dep/filecoin-verifier-tools/utils/large-issue-parser'
-import { generateGfmTable } from './markdown_utils'
+import { generateGfmTable, escape } from './markdown_utils'
 import xbytes from 'xbytes'
 import emoji from 'node-emoji'
 import { randomUUID } from 'crypto'
@@ -209,7 +209,7 @@ export default class CidChecker {
     type Params = RestEndpointMethodTypes['search']['issuesAndPullRequests']['parameters']
     type Response = RestEndpointMethodTypes['search']['issuesAndPullRequests']['response']
     const params: Params = {
-      q: `repo:${this.fileUploadConfig.searchRepo} is:issue ${client}`
+      q: `repo:${this.fileUploadConfig.searchRepo} is:issue ${encodeURIComponent(client)}`
     }
     const response: Response = await this.octokit.request('GET /search/issues', params)
 
@@ -282,8 +282,8 @@ export default class CidChecker {
             otherClientAddress: share.other_client_address,
             totalDealSize,
             uniqueCidCount: share.unique_cid_count.toLocaleString('en-US'),
-            otherClientOrganizationNames: otherApplications.map(x => x.organizationName).join('<br/>'),
-            otherClientProjectNames: otherApplications.map(x => `[${x.projectName}](${x.url})`).join('<br/>')
+            otherClientOrganizationNames: otherApplications.map(x => escape(x.organizationName)).join('<br/>'),
+            otherClientProjectNames: otherApplications.map(x => `[${escape(x.projectName)}](${x.url})`).join('<br/>')
           }
         }
       )
@@ -302,9 +302,9 @@ export default class CidChecker {
 
     const content: string[] = []
     content.push('## DataCap and CID Checker Report')
-    content.push(` - Organization: \`${applicationInfo.organizationName}\``)
-    content.push(` - Project: \`${applicationInfo.projectName}\``)
-    content.push(` - Client: \`${applicationInfo.clientAddress}\``)
+    content.push(` - Organization: \`${escape(applicationInfo.organizationName)}\``)
+    content.push(` - Project: \`${escape(applicationInfo.projectName)}\``)
+    content.push(` - Client: \`${escape(applicationInfo.clientAddress)}\``)
     content.push('### Storage Provider Distribution')
     content.push('The below table shows the distribution of storage providers that have stored data for this client.')
     content.push('For most of the datacap application, below restrictions should apply. GeoIP locations are resolved with Maxmind GeoIP database.')

@@ -1,4 +1,4 @@
-import {ColumnConfig, generateGfmTable} from "../../src/checker/markdown_utils";
+import {ColumnConfig, generateGfmTable, escape} from "../../src/checker/markdown_utils";
 
 describe('MarkdownUtils', () => {
   describe('generateGfmTable', () => {
@@ -22,6 +22,14 @@ describe('MarkdownUtils', () => {
 | :--- | --: |
 | foo  |  10 |
 | bar  |  20 |`)
+    })
+  })
+
+  describe('escape', () => {
+    it('should escape markdown characters', () => {
+      const text = '\\`*_{}[]<>()#+-.!|'
+      const result = escape(text)
+      expect(result).toBe('\\\\\\`\\*\\_\\{\\}\\[\\]\\<\\>\\(\\)\\#\\+\\-\\.\\!\\|')
     })
   })
 })
