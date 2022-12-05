@@ -1,4 +1,4 @@
-import {ColumnConfig, generateGfmTable} from "../../src/checker/MarkdownUtils";
+import {ColumnConfig, generateGfmTable, escape, generateLink} from "../../src/checker/MarkdownUtils";
 
 describe('MarkdownUtils', () => {
   describe('generateGfmTable', () => {
@@ -22,6 +22,30 @@ describe('MarkdownUtils', () => {
 | :--- | --: |
 | foo  |  10 |
 | bar  |  20 |`)
+    })
+  })
+
+  describe('escape', () => {
+    it('should escape markdown characters', () => {
+      const text = '\\`*_{}[]<>()#+-.!|'
+      const result = escape(text)
+      expect(result).toBe('\\\\\\`\\*\\_\\{\\}\\[\\]\\<\\>\\(\\)\\#\\+\\-\\.\\!\\|')
+    })
+  })
+
+  describe('generateLink', () => {
+    it('should generate a link', () => {
+      const text = 'text'
+      const url = 'https://www.github.com/something'
+      const result = generateLink(text, url)
+      expect(result).toBe('[text](https://www.github.com/something)')
+    })
+
+    it('should generate a fake link', () => {
+      const text = 'text'
+      const url = 'https://www.github.com/something'
+      const result = generateLink(text, url, true)
+      expect(result).toBe('[text](www.github.com#something)')
     })
   })
 })
