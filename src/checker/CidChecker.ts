@@ -6,9 +6,9 @@ import {
   ReplicationDistribution,
   ProviderDistribution,
   ProviderDistributionRow, ReplicationDistributionRow, CidSharingRow
-} from './types'
+} from './Types'
 import { parseIssue } from '../../dep/filecoin-verifier-tools/utils/large-issue-parser'
-import { generateGfmTable, escape } from './markdown_utils'
+import { generateGfmTable, escape } from './MarkdownUtils'
 import xbytes from 'xbytes'
 import emoji from 'node-emoji'
 import { randomUUID } from 'crypto'
@@ -282,7 +282,7 @@ export default class CidChecker {
             otherClientAddress: share.other_client_address,
             totalDealSize,
             uniqueCidCount: share.unique_cid_count.toLocaleString('en-US'),
-            otherClientOrganizationNames: otherApplications.map(x => escape(x.organizationName)).join('<br/>'),
+            otherClientOrganizationNames: otherApplications.map(x => '`' + escape(x.organizationName) + '`').join('<br/>'),
             otherClientProjectNames: otherApplications.map(x => `[${escape(x.projectName)}](${x.url})`).join('<br/>')
           }
         }
@@ -309,27 +309,37 @@ export default class CidChecker {
     content.push('The below table shows the distribution of storage providers that have stored data for this client.')
     content.push('For most of the datacap application, below restrictions should apply. GeoIP locations are resolved with Maxmind GeoIP database.')
     content.push(' - Storage provider should not exceed 25% of total deal size.')
-    content.push(' - Storage provider should not be storing same data more than 25%.')
+    content.push(' - Storage provider should not be storing same data more than 25%. A high duplication factor means that the storage provider is storing the same data multiple times.')
     content.push(' - Storage provider should have published its public IP address.')
     content.push(' - The storage providers should be located in different regions.')
     content.push('')
+    let providerDistributionHealthy = true
     for (const provider of providerDistributions) {
       const providerLink = `[${provider.provider}](https://filfox.info/en/address/${provider.provider})`
       if (provider.percentage > 0.25) {
         content.push(emoji.get('warning') + ` ${providerLink} has sealed more than 25% of total deals.`)
         content.push('')
+        providerDistributionHealthy = false
       }
       if (provider.duplication_factor > 1.25) {
-        content.push(emoji.get('warning') + ` ${providerLink} has sealed same data more than 25%.`)
+        content.push(emoji.get('warning') + ` ${providerLink} has sealed same data more than 25%. The duplication factor is ${provider.duplication_factor.toFixed(2)}.`)
         content.push('')
+        providerDistributionHealthy = false
       }
       if (provider.country == null || provider.country === '') {
         content.push(emoji.get('warning') + ` ${providerLink} has unknown IP location.`)
         content.push('')
+        providerDistributionHealthy = false
       }
     }
     if (new Set(providerDistributionRows.map(row => row.location)).size <= 1) {
       content.push(emoji.get('warning') + ' All storage providers are located in the same region.')
+      content.push('')
+      providerDistributionHealthy = false
+    }
+
+    if (providerDistributionHealthy) {
+      content.push(emoji.get('heavy_check_mark') + ' Storage provider distribution looks healthy.')
       content.push('')
     }
 
@@ -356,8 +366,10 @@ export default class CidChecker {
     if (lowReplicaPercentage > 0.25) {
       content.push(emoji.get('warning') + ` ${(lowReplicaPercentage * 100).toFixed(2)} of deals are for data replicated across less than 4 storage providers.`)
       content.push('')
+    } else {
+      content.push(emoji.get('heavy_check_mark') + ' Data replication looks healthy.')
+      content.push('')
     }
-    content.push('')
     content.push(generateGfmTable(replicationDistributionRows, [
       ['numOfReplica', { name: 'Number of Replicas', align: 'r' }],
       ['uniqueDataSize', { name: 'Unique Data Size', align: 'r' }],
@@ -382,7 +394,7 @@ export default class CidChecker {
         ['uniqueCidCount', { name: 'Unique CIDs', align: 'r' }]
       ]))
     } else {
-      content.push(emoji.get('white_check_mark') + ' No CID sharing has been observed.')
+      content.push(emoji.get('heavy_check_mark') + ' No CID sharing has been observed.')
     }
 
     content.push('')

@@ -1,7 +1,7 @@
 import { Pool } from 'pg'
 import { DeprecatedLogger } from 'probot/lib/types'
-import CidChecker, { FileUploadConfig } from './checker/cid_checker'
-import { ProbotOctokit } from 'probot'
+import CidChecker, { FileUploadConfig } from './checker/CidChecker'
+import { Octokit } from '@octokit/core'
 
 export const pool = new Pool()
 export function getCidChecker (logger: DeprecatedLogger): CidChecker {
@@ -22,11 +22,9 @@ export function getCidChecker (logger: DeprecatedLogger): CidChecker {
     searchRepo: 'filecoin-project/filecoin-plus-large-datasets'
   }
 
-  const octokit = new ProbotOctokit({
-    auth: {
-      token: process.env.UPLOAD_TOKEN
-    },
-    log: logger.child({ name: 'uploader-octokit' })
+  const octokit = new Octokit({
+    auth: process.env.UPLOAD_TOKEN,
+    log: logger
   })
 
   return new CidChecker(

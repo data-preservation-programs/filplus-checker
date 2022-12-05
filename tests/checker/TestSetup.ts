@@ -1,5 +1,5 @@
 import {Pool} from "pg";
-import {FileUploadConfig} from "../../src/checker/cid_checker";
+import {FileUploadConfig} from "../../src/checker/CidChecker";
 
 const createGeoStatement = `CREATE TABLE IF NOT EXISTS active_miners
                             (

@@ -1,11 +1,11 @@
-import CidChecker from "../../src/checker/cid_checker";
+import CidChecker from "../../src/checker/CidChecker";
 import {Issue, IssueCommentCreatedEvent} from "@octokit/webhooks-types";
 import * as fs from "fs";
-import {fileUploadConfig, setupDatabase, testDatabase} from "./test_setup";
+import {fileUploadConfig, setupDatabase, testDatabase} from "./TestSetup";
 import nock from "nock";
 import {ProbotOctokit} from "probot";
 
-describe('Cid_checker', () => {
+describe('CidChecker', () => {
   let checker: CidChecker
   let issue: Issue
   let event: IssueCommentCreatedEvent
