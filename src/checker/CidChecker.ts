@@ -277,7 +277,7 @@ export default class CidChecker {
       cidSharing.map(
         async (share) => {
           const totalDealSize = xbytes(parseFloat(share.total_deal_size), { iec: true })
-          const otherApplications = await this.findIssueForClient(share.other_client_address)
+          const otherApplications = Array.from(new Set(await this.findIssueForClient(share.other_client_address)))
           return {
             otherClientAddress: share.other_client_address,
             totalDealSize,

@@ -6,17 +6,17 @@
 The below table shows the distribution of storage providers that have stored data for this client.
 For most of the datacap application, below restrictions should apply. GeoIP locations are resolved with Maxmind GeoIP database.
  - Storage provider should not exceed 25% of total deal size.
- - Storage provider should not be storing same data more than 25%.
+ - Storage provider should not be storing same data more than 25%. A high duplication factor means that the storage provider is storing the same data multiple times.
  - Storage provider should have published its public IP address.
  - The storage providers should be located in different regions.
 
 ⚠️ [provider0](https://filfox.info/en/address/provider0) has sealed more than 25% of total deals.
 
-⚠️ [provider0](https://filfox.info/en/address/provider0) has sealed same data more than 25%.
+⚠️ [provider0](https://filfox.info/en/address/provider0) has sealed same data more than 25%. The duplication factor is 4.00.
 
 ⚠️ [provider0](https://filfox.info/en/address/provider0) has unknown IP location.
 
-⚠️ [provider5](https://filfox.info/en/address/provider5) has sealed same data more than 25%.
+⚠️ [provider5](https://filfox.info/en/address/provider5) has sealed same data more than 25%. The duplication factor is 2.00.
 
 | Provider                                              |              Location | Total Deals Made | Percentage | Unique Data | Duplication Factor |
 | :---------------------------------------------------- | --------------------: | ---------------: | ---------: | ----------: | -----------------: |
@@ -34,7 +34,6 @@ For most of the datacap application, the number of replicas should be more than 
 
 ⚠️ 100.00 of deals are for data replicated across less than 4 storage providers.
 
-
 | Number of Replicas | Unique Data Size | Total Deals Made | Deal Percentage |
 | -----------------: | ---------------: | ---------------: | --------------: |
 |                  1 |         300.00 B |         700.00 B |          70.00% |
@@ -47,7 +46,7 @@ Usually different applications owns different data and should not resolve to the
 
 ⚠️ CID sharing has been observed.
 
-| Other Client | Organizations    | Projects                | Total Deals Made | Unique CIDs |
-| -----------: | :--------------- | :---------------------- | ---------------: | ----------: |
-|       fxxxx3 | Some Company Inc | [My Project3](test-url) |         200.00 B |           2 |
-|       fxxxx2 | Some Company Inc | [My Project2](test-url) |         100.00 B |           1 |
+| Other Client | Organizations      | Projects                | Total Deals Made | Unique CIDs |
+| -----------: | :----------------- | :---------------------- | ---------------: | ----------: |
+|       fxxxx3 | `Some Company Inc` | [My Project3](test-url) |         200.00 B |           2 |
+|       fxxxx2 | `Some Company Inc` | [My Project2](test-url) |         100.00 B |           1 |
