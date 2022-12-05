@@ -8,7 +8,7 @@ import {
   ProviderDistributionRow, ReplicationDistributionRow, CidSharingRow
 } from './Types'
 import { parseIssue } from '../../dep/filecoin-verifier-tools/utils/large-issue-parser'
-import { generateGfmTable, escape } from './MarkdownUtils'
+import { generateGfmTable, escape, generateLink } from './MarkdownUtils'
 import xbytes from 'xbytes'
 import emoji from 'node-emoji'
 import { randomUUID } from 'crypto'
@@ -104,6 +104,7 @@ export default class CidChecker {
     private readonly sql: Pool,
     private readonly octokit: Octokit,
     private readonly fileUploadConfig: FileUploadConfig,
+    private readonly fakeLink: boolean,
     private readonly logger: Logger) {
   }
 
@@ -253,7 +254,7 @@ export default class CidChecker {
         location = 'Unknown'
       }
       return {
-        provider: `[${distribution.provider}](https://filfox.info/en/address/${distribution.provider})`,
+        provider: generateLink(distribution.provider, `https://filfox.info/en/address/${distribution.provider}`),
         totalDealSize,
         uniqueDataSize,
         location,
@@ -283,7 +284,7 @@ export default class CidChecker {
             totalDealSize,
             uniqueCidCount: share.unique_cid_count.toLocaleString('en-US'),
             otherClientOrganizationNames: otherApplications.map(x => '`' + escape(x.organizationName) + '`').join('<br/>'),
-            otherClientProjectNames: otherApplications.map(x => `[${escape(x.projectName)}](${x.url})`).join('<br/>')
+            otherClientProjectNames: otherApplications.map(x => generateLink(escape(x.projectName), x.url, this.fakeLink)).join('<br/>')
           }
         }
       )
@@ -315,7 +316,7 @@ export default class CidChecker {
     content.push('')
     let providerDistributionHealthy = true
     for (const provider of providerDistributions) {
-      const providerLink = `[${provider.provider}](https://filfox.info/en/address/${provider.provider})`
+      const providerLink = generateLink(provider.provider, `https://filfox.info/en/address/${provider.provider}`)
       if (provider.percentage > 0.25) {
         content.push(emoji.get('warning') + ` ${providerLink} has sealed more than 25% of total deals.`)
         content.push('')

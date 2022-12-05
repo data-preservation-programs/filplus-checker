@@ -1,6 +1,6 @@
 import nock from "nock";
 import {Probot, ProbotOctokit} from "probot";
-import checkerApp from "../src";
+import handler from "../src/app";
 import * as dependency from "../src/Dependency";
 import payload from './fixtures/comment-created-event.json'
 import {setupDatabase} from "./checker/TestSetup";
@@ -23,7 +23,7 @@ describe('checkerApp', () => {
       })
     });
 
-    checkerApp(probot, {})
+    handler(probot, {})
   })
 
   it('should post a new comment when triggered', async () => {

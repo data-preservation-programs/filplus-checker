@@ -20,7 +20,7 @@ describe('CidChecker', () => {
     nock.disableNetConnect();
     checker = new CidChecker(testDatabase, new ProbotOctokit({ auth: {
        token: 'test-token'
-      }}), fileUploadConfig, (str) => {
+      }}), fileUploadConfig, false, (str) => {
       console.log(str)
     })
     issue = <any>{

@@ -1,34 +1,6 @@
-import { ApplicationFunction, Probot } from 'probot'
-import { ApplicationFunctionOptions } from 'probot/lib/types'
-import { parseIdentifiers } from './utils'
-import { getCidChecker } from './Dependency'
+import { createLambdaFunction, createProbot } from '@probot/adapter-aws-lambda-serverless'
+import app from './app'
 
-const handler: ApplicationFunction = (app: Probot, options: ApplicationFunctionOptions): void => {
-  app.log('Yay, the app was loaded!')
-  app.log('options', options)
-
-  app.on(['issue_comment.created'], async (context) => {
-    app.log.info({ context })
-    const { body } = context.payload.comment
-
-    if (body.match(/Stats & Info for DataCap Allocation/i) != null) {
-      const { notaryAddress, clientAddress, interplanetaryLink, datasetIssueLink } = parseIdentifiers(app, body)
-      app.log.info({ notaryAddress, clientAddress, interplanetaryLink, datasetIssueLink })
-
-      const checker = getCidChecker(app.log)
-
-      const result = await checker.check(context.payload)
-
-      const issueComment = context.issue({
-        body: result
-      })
-
-      app.log.info({ issueComment })
-      if (process.env.DRY_RUN !== 'true' && process.env.DRY_RUN !== '1') {
-        await context.octokit.issues.createComment(issueComment)
-      }
-    }
-  })
-}
-
-export = handler
+module.exports.webhooks = createLambdaFunction(app, {
+  probot: createProbot()
+})
