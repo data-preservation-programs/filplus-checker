@@ -5,7 +5,7 @@ import { Topology, GeometryCollection } from 'topojson-specification';
 import {GeoFeature, BubbleMapController, ColorScale, ProjectionScale, SizeLogarithmicScale, SizeScale } from 'chartjs-chart-geo';
 import * as ChartGeo from 'chartjs-chart-geo';
 import { createCanvas } from 'canvas';
-import { ReplicationDistribution } from '../checker/Types';
+import { ProviderDistribution } from '../checker/Types';
 
 // import { ChartJSNodeCanvas } from 'chartjs-node-canvas';
 
@@ -14,7 +14,7 @@ export default class DealDistributionMap {
   public readonly data: any;
   public readonly options: any;
 
-  public constructor(data: ReplicationDistribution[], opts: any = {}) {
+  public constructor(data: ProviderDistribution[], opts: any = {}) {
     this.data = data;
     this.options = opts;
     this.initCountries();

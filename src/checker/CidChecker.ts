@@ -25,7 +25,7 @@ import { resolve4, resolve6 } from 'dns/promises'
 import axios from 'axios'
 import { Multiaddr } from 'multiaddr'
 import BarChart from '../charts/BarChart'
-import DealDistributionMap from '../charts/DealDistributionMap'
+// import DealDistributionMap from '../charts/DealDistributionMap'
 
 export type Logger = (message: string) => void
 
@@ -425,10 +425,10 @@ export default class CidChecker {
     const barChart = new BarChart(replicationDistributions)
     const replicationDistributionImage = await barChart.generateChartImage()
 
-    const wolrdDealDistributions = new DealDistributionMap(replicationDistributions)
-    const providerDistributionImage = await wolrdDealDistributions.generateChartImage()
+    // const wolrdDealDistributions = new DealDistributionMap(providerDistributions)
+    // const providerDistributionImage = await wolrdDealDistributions.generateChartImage()
 
-    // const providerDistributionImage = this.getImageForProviderDistribution(providerDistributions)
+    const providerDistributionImage = this.getImageForProviderDistribution(providerDistributions)
     const providerDistributionImageUrl = await this.uploadFile(
       `${repository.full_name}/issues/${issue.number}/${Date.now()}.png`,
       providerDistributionImage,
