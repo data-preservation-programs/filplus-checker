@@ -9,7 +9,7 @@
     "start": "probot run ./dist/src/app.js",
     "lint": "eslint --ext ts --fix src/",
     "lint:nofix": "eslint --ext ts src/",
-    "release": "rm -rf dist && npm run build && cp package*.json dist && cd dist && npm ci --production && zip -r index.zip ."
+    "release": "rm -rf dist && npm run build && cp package*.json dist && cd dist && npm ci --omit=dev && zip -r9 index.zip ."
   },
   "repository": {
     "type": "git",
