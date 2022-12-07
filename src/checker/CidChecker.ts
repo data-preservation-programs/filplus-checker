@@ -186,6 +186,7 @@ export default class CidChecker {
 
   private getImageForProviderDistribution (providerDistributions: ProviderDistributionWithLocation[]): string {
     const geoMapEntries: GeoMapEntry[] = []
+
     for (const distribution of providerDistributions) {
       if (distribution.longitude != null && distribution.latitude != null) {
         geoMapEntries.push({

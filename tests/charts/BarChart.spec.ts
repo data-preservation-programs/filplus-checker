@@ -15,14 +15,21 @@ describe('BarChart', () => {
       {
         "num_of_replicas": 2,
         "total_deal_size": '200',
+      },
+      {
+        "num_of_replicas": 4,
+        "total_deal_size": '500',
+      },
+      {
+        "num_of_replicas": 6,
+        "total_deal_size": '1000',
       }
     ] as ReplicationDistribution[]
-
-
-    barChart = new BarChart(data)
   })
 
   it('should generate a chart image', async () => {
+    barChart = new BarChart(data)
+
     const image = await barChart.generateChartImage()
     expect(image).toContain('data:image/png;base64')
   })
