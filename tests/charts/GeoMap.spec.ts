@@ -2,7 +2,7 @@ import * as fs from "fs";
 import GeoMap, {GeoMapEntry} from "../../src/charts/GeoMap";
 
 describe('GeoMap', () => {
-  fit('should generate a chart image', async () => {
+  it('should generate a chart image', async () => {
     const data: GeoMapEntry[] = [
       {
         label: 'f01000',
