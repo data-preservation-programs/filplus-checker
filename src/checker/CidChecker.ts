@@ -10,7 +10,9 @@ import {
   CidSharingRow,
   Location,
   ProviderDistributionWithLocation,
-  MinerInfo, IpInfoResponse, GetVerifiedClientResponse
+  MinerInfo,
+  IpInfoResponse,
+  GetVerifiedClientResponse
 } from './Types'
 import { parseIssue } from '../../dep/filecoin-verifier-tools/utils/large-issue-parser'
 import { generateGfmTable, escape, generateLink, wrapInCode } from './MarkdownUtils'
@@ -24,8 +26,8 @@ import ordinal from 'ordinal'
 import { resolve4, resolve6 } from 'dns/promises'
 import axios from 'axios'
 import { Multiaddr } from 'multiaddr'
-import BarChart from '../charts/BarChart'
-// import DealDistributionMap from '../charts/DealDistributionMap'
+import BarChart, { BarChartEntry } from '../charts/BarChart'
+import GeoMap, { GeoMapEntry } from '../charts/GeoMap'
 
 export type Logger = (message: string) => void
 
@@ -167,6 +169,36 @@ export default class CidChecker {
     return distributions
   }
 
+  private getImageForReplicationDistribution (replicationDistributions: ReplicationDistribution[]): string {
+    const replicationEntries: BarChartEntry[] = []
+
+    for (const distribution of replicationDistributions) {
+      replicationEntries.push({
+        yValue: distribution.num_of_replicas,
+        xValue: parseFloat(distribution.total_deal_size),
+        barLabel: xbytes(parseFloat(distribution.total_deal_size)),
+        label: distribution.num_of_replicas.toString()
+      })
+    }
+
+    return BarChart.getImage(replicationEntries)
+  }
+
+  private getImageForProviderDistribution (providerDistributions: ProviderDistributionWithLocation[]): string {
+    const geoMapEntries: GeoMapEntry[] = []
+    for (const distribution of providerDistributions) {
+      if (distribution.longitude != null && distribution.latitude != null) {
+        geoMapEntries.push({
+          longitude: distribution.longitude,
+          latitude: distribution.latitude,
+          value: distribution.percentage,
+          label: distribution.provider
+        })
+      }
+    }
+    return GeoMap.getImage(geoMapEntries)
+  }
+
   private async getCidSharing (client: string): Promise<CidSharing[]> {
     this.logger.info({ client }, 'Getting cid sharing')
     const queryResult = await retry(async () => await this.sql.query(
@@ -199,10 +231,6 @@ export default class CidChecker {
     this.logger.info({ owner: params.owner, repo: params.repo, path: params.path, message: params.message }, 'Uploaded file')
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     return response.data.content!.download_url!
-  }
-
-  private getImageForProviderDistribution (_providerDistributions: ProviderDistributionWithLocation[]): string {
-    return 'iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAApgAAAKYB3X3/OAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAANCSURBVEiJtZZPbBtFFMZ/M7ubXdtdb1xSFyeilBapySVU8h8OoFaooFSqiihIVIpQBKci6KEg9Q6H9kovIHoCIVQJJCKE1ENFjnAgcaSGC6rEnxBwA04Tx43t2FnvDAfjkNibxgHxnWb2e/u992bee7tCa00YFsffekFY+nUzFtjW0LrvjRXrCDIAaPLlW0nHL0SsZtVoaF98mLrx3pdhOqLtYPHChahZcYYO7KvPFxvRl5XPp1sN3adWiD1ZAqD6XYK1b/dvE5IWryTt2udLFedwc1+9kLp+vbbpoDh+6TklxBeAi9TL0taeWpdmZzQDry0AcO+jQ12RyohqqoYoo8RDwJrU+qXkjWtfi8Xxt58BdQuwQs9qC/afLwCw8tnQbqYAPsgxE1S6F3EAIXux2oQFKm0ihMsOF71dHYx+f3NND68ghCu1YIoePPQN1pGRABkJ6Bus96CutRZMydTl+TvuiRW1m3n0eDl0vRPcEysqdXn+jsQPsrHMquGeXEaY4Yk4wxWcY5V/9scqOMOVUFthatyTy8QyqwZ+kDURKoMWxNKr2EeqVKcTNOajqKoBgOE28U4tdQl5p5bwCw7BWquaZSzAPlwjlithJtp3pTImSqQRrb2Z8PHGigD4RZuNX6JYj6wj7O4TFLbCO/Mn/m8R+h6rYSUb3ekokRY6f/YukArN979jcW+V/S8g0eT/N3VN3kTqWbQ428m9/8k0P/1aIhF36PccEl6EhOcAUCrXKZXXWS3XKd2vc/TRBG9O5ELC17MmWubD2nKhUKZa26Ba2+D3P+4/MNCFwg59oWVeYhkzgN/JDR8deKBoD7Y+ljEjGZ0sosXVTvbc6RHirr2reNy1OXd6pJsQ+gqjk8VWFYmHrwBzW/n+uMPFiRwHB2I7ih8ciHFxIkd/3Omk5tCDV1t+2nNu5sxxpDFNx+huNhVT3/zMDz8usXC3ddaHBj1GHj/As08fwTS7Kt1HBTmyN29vdwAw+/wbwLVOJ3uAD1wi/dUH7Qei66PfyuRj4Ik9is+hglfbkbfR3cnZm7chlUWLdwmprtCohX4HUtlOcQjLYCu+fzGJH2QRKvP3UNz8bWk1qMxjGTOMThZ3kvgLI5AzFfo379UAAAAASUVORK5CYII='
   }
 
   // private getImageForReplicationDistribution (_replicationDistributions: ReplicationDistribution[]): string {
@@ -418,17 +446,9 @@ export default class CidChecker {
       )
     )
 
-    // https://github.com/xinaxu/filecoin-plus-large-datasets/issues/3 - image
-    // https://github.com/data-preservation-programs/filecoin-plus-large-datasets/issues/1 - data
-
-    // const replicationDistributionImage = this.getImageForReplicationDistribution(replicationDistributions)
-    const barChart = new BarChart(replicationDistributions)
-    const replicationDistributionImage = await barChart.generateChartImage()
-
-    // const wolrdDealDistributions = new DealDistributionMap(providerDistributions)
-    // const providerDistributionImage = await wolrdDealDistributions.generateChartImage()
-
+    const replicationDistributionImage = this.getImageForReplicationDistribution(replicationDistributions)
     const providerDistributionImage = this.getImageForProviderDistribution(providerDistributions)
+
     const providerDistributionImageUrl = await this.uploadFile(
       `${repository.full_name}/issues/${issue.number}/${Date.now()}.png`,
       providerDistributionImage,

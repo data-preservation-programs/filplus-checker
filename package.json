@@ -51,6 +51,8 @@
     "canvas": "^2.10.2",
     "chart.js": "^3.9.1",
     "chartjs-chart-geo": "3.9.0",
+    "chartjs-node-canvas": "^4.1.6",
+    "chartjs-plugin-datalabels": "^2.1.0",
     "markdown-table": "^2.0.0",
     "multiaddr": "^10.0.1",
     "nock": "^13.2.9",
