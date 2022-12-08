@@ -232,7 +232,7 @@ export default class CidChecker {
     return result
   }
 
-  private static linkifyAddress(address: string): string {
+  private static linkifyAddress (address: string): string {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     return `[${address.match(/.{1,41}/g)!.join('<br/>')}](https://filfox.info/en/address/${address})`
   }
