@@ -2,6 +2,7 @@ import { Chart } from 'chart.js'
 import { createCanvas } from 'canvas'
 import { ReplicationDistribution } from '../checker/Types'
 import xbytes from 'xbytes'
+import { customCanvasBackgroundColor } from './plugins'
 
 const RED = 'rgba(255, 99, 132)'
 const GREEN = 'rgba(75, 192, 192)'
@@ -56,15 +57,8 @@ export default class BarChart {
             display: true,
             text: 'Deal Bytes by Number of Replicas'
           },
-          bounds: 'data',
-          axis: 'x',
-          grid: {
-            display: false,
-            drawBorder: false,
-            drawOnChartArea: false,
-            drawTicks: false,
-            offset: false,
-            z: 0
+          customCanvasBackgroundColor: {
+            color: '#fff',
           }
         },
         scales: {
@@ -89,7 +83,8 @@ export default class BarChart {
             }
           },
         },
-      }
+      },
+      plugins: [customCanvasBackgroundColor]
     }
   }
 }
