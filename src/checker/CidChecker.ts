@@ -309,8 +309,8 @@ export default class CidChecker {
     content.push('### Storage Provider Distribution')
     content.push('The below table shows the distribution of storage providers that have stored data for this client.')
     content.push('For most of the datacap application, below restrictions should apply. GeoIP locations are resolved with Maxmind GeoIP database.')
-    content.push(' - Storage provider should not exceed 25% of total deal size.')
-    content.push(' - Storage provider should not be storing same data more than 25%. A high duplication factor means that the storage provider is storing the same data multiple times.')
+    content.push(' - Storage provider should not exceed 25% of total datacap.')
+    content.push(' - Storage provider should not be storing duplicate data for more than 25%.')
     content.push(' - Storage provider should have published its public IP address.')
     content.push(' - The storage providers should be located in different regions.')
     content.push('')
@@ -318,12 +318,13 @@ export default class CidChecker {
     for (const provider of providerDistributions) {
       const providerLink = generateLink(provider.provider, `https://filfox.info/en/address/${provider.provider}`)
       if (provider.percentage > 0.25) {
-        content.push(emoji.get('warning') + ` ${providerLink} has sealed more than 25% of total deals.`)
+        content.push(emoji.get('warning') + ` ${providerLink} has sealed ${(provider.percentage * 100).toFixed(2)}% of total datacap.`)
         content.push('')
         providerDistributionHealthy = false
       }
       if (provider.duplication_factor > 1.25) {
-        content.push(emoji.get('warning') + ` ${providerLink} has sealed same data more than 25%. The duplication factor is ${provider.duplication_factor.toFixed(2)}.`)
+        const ratio = ((provider.duplication_factor - 1) / provider.duplication_factor * 100).toFixed(2)
+        content.push(emoji.get('warning') + ` ${ratio} of total deal sealed by ${providerLink} are duplicate data.`)
         content.push('')
         providerDistributionHealthy = false
       }
@@ -348,10 +349,10 @@ export default class CidChecker {
       [
         ['provider', { name: 'Provider', align: 'l' }],
         ['location', { name: 'Location', align: 'r' }],
-        ['totalDealSize', { name: 'Total Deals Made', align: 'r' }],
+        ['totalDealSize', { name: 'Total Deals Sealed', align: 'r' }],
         ['percentage', { name: 'Percentage', align: 'r' }],
         ['uniqueDataSize', { name: 'Unique Data', align: 'r' }],
-        ['duplicationFactor', { name: 'Duplication Factor', align: 'r' }]
+        ['duplicationFactor', { name: 'Duplication Factor (Total Deals / Unique Data)', align: 'r' }]
       ]))
     content.push('')
     content.push(`![Provider Distribution](${providerDistributionImageUrl})`)
@@ -372,7 +373,7 @@ export default class CidChecker {
       content.push('')
     }
     content.push(generateGfmTable(replicationDistributionRows, [
-      ['numOfReplica', { name: 'Number of Replicas', align: 'r' }],
+      ['numOfReplica', { name: 'Number of Providers', align: 'r' }],
       ['uniqueDataSize', { name: 'Unique Data Size', align: 'r' }],
       ['totalDealSize', { name: 'Total Deals Made', align: 'r' }],
       ['percentage', { name: 'Deal Percentage', align: 'r' }]
@@ -391,7 +392,7 @@ export default class CidChecker {
         ['otherClientAddress', { name: 'Other Client', align: 'r' }],
         ['otherClientOrganizationNames', { name: 'Organizations', align: 'l' }],
         ['otherClientProjectNames', { name: 'Projects', align: 'l' }],
-        ['totalDealSize', { name: 'Total Deals Made', align: 'r' }],
+        ['totalDealSize', { name: 'Total Deals Affected', align: 'r' }],
         ['uniqueCidCount', { name: 'Unique CIDs', align: 'r' }]
       ]))
     } else {
