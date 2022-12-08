@@ -27,6 +27,13 @@ export interface FileUploadConfig {
   searchRepo: string
 }
 
+export interface Criteria {
+  maxProviderDealPercentage: number
+  maxDuplicationFactor: number
+  lowReplicaThreshold: number
+  maxPercentageForLowReplica: number
+}
+
 export default class CidChecker {
   private static readonly ProviderDistributionQuery = `
       WITH miner_pieces AS (SELECT provider,
@@ -226,7 +233,12 @@ export default class CidChecker {
     return result
   }
 
-  public async check (event: IssueCommentCreatedEvent): Promise<string> {
+  public async check (event: IssueCommentCreatedEvent, criteria: Criteria = {
+    maxProviderDealPercentage: 0.25,
+    maxDuplicationFactor: 1.25,
+    maxPercentageForLowReplica: 0.25,
+    lowReplicaThreshold: 3
+  }): Promise<string> {
     const { issue, repository } = event
     this.logger(`Checking issue #${issue.number}...`)
     const applicationInfo = CidChecker.getApplicationInfo(issue)
@@ -309,21 +321,22 @@ export default class CidChecker {
     content.push('### Storage Provider Distribution')
     content.push('The below table shows the distribution of storage providers that have stored data for this client.')
     content.push('For most of the datacap application, below restrictions should apply. GeoIP locations are resolved with Maxmind GeoIP database.')
-    content.push(' - Storage provider should not exceed 25% of total deal size.')
-    content.push(' - Storage provider should not be storing same data more than 25%. A high duplication factor means that the storage provider is storing the same data multiple times.')
+    content.push(` - Storage provider should not exceed ${(criteria.maxProviderDealPercentage * 100).toFixed(0)}% of total datacap.`)
+    content.push(` - Storage provider should not be storing duplicate data for more than ${(criteria.maxDuplicationFactor * 100 - 100).toFixed(0)}%.`)
     content.push(' - Storage provider should have published its public IP address.')
     content.push(' - The storage providers should be located in different regions.')
     content.push('')
     let providerDistributionHealthy = true
     for (const provider of providerDistributions) {
       const providerLink = generateLink(provider.provider, `https://filfox.info/en/address/${provider.provider}`)
-      if (provider.percentage > 0.25) {
-        content.push(emoji.get('warning') + ` ${providerLink} has sealed more than 25% of total deals.`)
+      if (provider.percentage > criteria.maxProviderDealPercentage) {
+        content.push(emoji.get('warning') + ` ${providerLink} has sealed ${(provider.percentage * 100).toFixed(2)}% of total datacap.`)
         content.push('')
         providerDistributionHealthy = false
       }
       if (provider.duplication_factor > 1.25) {
-        content.push(emoji.get('warning') + ` ${providerLink} has sealed same data more than 25%. The duplication factor is ${provider.duplication_factor.toFixed(2)}.`)
+        const ratio = ((provider.duplication_factor - 1) / provider.duplication_factor * 100).toFixed(2)
+        content.push(emoji.get('warning') + ` ${ratio}% of total deal sealed by ${providerLink} are duplicate data.`)
         content.push('')
         providerDistributionHealthy = false
       }
@@ -348,31 +361,31 @@ export default class CidChecker {
       [
         ['provider', { name: 'Provider', align: 'l' }],
         ['location', { name: 'Location', align: 'r' }],
-        ['totalDealSize', { name: 'Total Deals Made', align: 'r' }],
+        ['totalDealSize', { name: 'Total Deals Sealed', align: 'r' }],
         ['percentage', { name: 'Percentage', align: 'r' }],
         ['uniqueDataSize', { name: 'Unique Data', align: 'r' }],
-        ['duplicationFactor', { name: 'Duplication Factor', align: 'r' }]
+        ['duplicationFactor', { name: 'Duplication Factor (Total Deals / Unique Data)', align: 'r' }]
       ]))
     content.push('')
     content.push(`![Provider Distribution](${providerDistributionImageUrl})`)
 
     content.push('### Deal Data Replication')
     content.push('The below table shows how each many unique data are replicated across storage providers.')
-    content.push('For most of the datacap application, the number of replicas should be more than 3.')
+    content.push(`For most of the datacap application, the number of replicas should be more than ${criteria.lowReplicaThreshold}.`)
     content.push('')
     const lowReplicaPercentage = replicationDistributions
-      .filter(distribution => distribution.num_of_replicas <= 3)
+      .filter(distribution => distribution.num_of_replicas <= criteria.lowReplicaThreshold)
       .map(distribution => distribution.percentage)
       .reduce((a, b) => a + b, 0)
-    if (lowReplicaPercentage > 0.25) {
-      content.push(emoji.get('warning') + ` ${(lowReplicaPercentage * 100).toFixed(2)} of deals are for data replicated across less than 4 storage providers.`)
+    if (lowReplicaPercentage > criteria.maxPercentageForLowReplica) {
+      content.push(emoji.get('warning') + ` ${(lowReplicaPercentage * 100).toFixed(2)}% of deals are for data replicated across less than 4 storage providers.`)
       content.push('')
     } else {
       content.push(emoji.get('heavy_check_mark') + ' Data replication looks healthy.')
       content.push('')
     }
     content.push(generateGfmTable(replicationDistributionRows, [
-      ['numOfReplica', { name: 'Number of Replicas', align: 'r' }],
+      ['numOfReplica', { name: 'Number of Providers', align: 'r' }],
       ['uniqueDataSize', { name: 'Unique Data Size', align: 'r' }],
       ['totalDealSize', { name: 'Total Deals Made', align: 'r' }],
       ['percentage', { name: 'Deal Percentage', align: 'r' }]
@@ -391,7 +404,7 @@ export default class CidChecker {
         ['otherClientAddress', { name: 'Other Client', align: 'r' }],
         ['otherClientOrganizationNames', { name: 'Organizations', align: 'l' }],
         ['otherClientProjectNames', { name: 'Projects', align: 'l' }],
-        ['totalDealSize', { name: 'Total Deals Made', align: 'r' }],
+        ['totalDealSize', { name: 'Total Deals Affected', align: 'r' }],
         ['uniqueCidCount', { name: 'Unique CIDs', align: 'r' }]
       ]))
     } else {
