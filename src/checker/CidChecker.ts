@@ -27,6 +27,13 @@ export interface FileUploadConfig {
   searchRepo: string
 }
 
+export interface Criteria {
+  maxProviderDealPercentage: number
+  maxDuplicationFactor: number
+  lowReplicaThreshold: number
+  maxPercentageForLowReplica: number
+}
+
 export default class CidChecker {
   private static readonly ProviderDistributionQuery = `
       WITH miner_pieces AS (SELECT provider,
@@ -226,7 +233,12 @@ export default class CidChecker {
     return result
   }
 
-  public async check (event: IssueCommentCreatedEvent): Promise<string> {
+  public async check (event: IssueCommentCreatedEvent, criteria: Criteria = {
+    maxProviderDealPercentage: 0.25,
+    maxDuplicationFactor: 1.25,
+    maxPercentageForLowReplica: 0.25,
+    lowReplicaThreshold: 3
+  }): Promise<string> {
     const { issue, repository } = event
     this.logger(`Checking issue #${issue.number}...`)
     const applicationInfo = CidChecker.getApplicationInfo(issue)
@@ -309,15 +321,15 @@ export default class CidChecker {
     content.push('### Storage Provider Distribution')
     content.push('The below table shows the distribution of storage providers that have stored data for this client.')
     content.push('For most of the datacap application, below restrictions should apply. GeoIP locations are resolved with Maxmind GeoIP database.')
-    content.push(' - Storage provider should not exceed 25% of total datacap.')
-    content.push(' - Storage provider should not be storing duplicate data for more than 25%.')
+    content.push(` - Storage provider should not exceed ${(criteria.maxProviderDealPercentage * 100).toFixed(0)}% of total datacap.`)
+    content.push(` - Storage provider should not be storing duplicate data for more than ${(criteria.maxDuplicationFactor * 100 - 100).toFixed(0)}%.`)
     content.push(' - Storage provider should have published its public IP address.')
     content.push(' - The storage providers should be located in different regions.')
     content.push('')
     let providerDistributionHealthy = true
     for (const provider of providerDistributions) {
       const providerLink = generateLink(provider.provider, `https://filfox.info/en/address/${provider.provider}`)
-      if (provider.percentage > 0.25) {
+      if (provider.percentage > criteria.maxProviderDealPercentage) {
         content.push(emoji.get('warning') + ` ${providerLink} has sealed ${(provider.percentage * 100).toFixed(2)}% of total datacap.`)
         content.push('')
         providerDistributionHealthy = false
@@ -359,14 +371,14 @@ export default class CidChecker {
 
     content.push('### Deal Data Replication')
     content.push('The below table shows how each many unique data are replicated across storage providers.')
-    content.push('For most of the datacap application, the number of replicas should be more than 3.')
+    content.push(`For most of the datacap application, the number of replicas should be more than ${criteria.lowReplicaThreshold}.`)
     content.push('')
     const lowReplicaPercentage = replicationDistributions
-      .filter(distribution => distribution.num_of_replicas <= 3)
+      .filter(distribution => distribution.num_of_replicas <= criteria.lowReplicaThreshold)
       .map(distribution => distribution.percentage)
       .reduce((a, b) => a + b, 0)
-    if (lowReplicaPercentage > 0.25) {
-      content.push(emoji.get('warning') + ` ${(lowReplicaPercentage * 100).toFixed(2)} of deals are for data replicated across less than 4 storage providers.`)
+    if (lowReplicaPercentage > criteria.maxPercentageForLowReplica) {
+      content.push(emoji.get('warning') + ` ${(lowReplicaPercentage * 100).toFixed(2)}% of deals are for data replicated across less than 4 storage providers.`)
       content.push('')
     } else {
       content.push(emoji.get('heavy_check_mark') + ' Data replication looks healthy.')

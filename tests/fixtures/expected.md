@@ -32,7 +32,7 @@ For most of the datacap application, below restrictions should apply. GeoIP loca
 The below table shows how each many unique data are replicated across storage providers.
 For most of the datacap application, the number of replicas should be more than 3.
 
-⚠️ 100.00 of deals are for data replicated across less than 4 storage providers.
+⚠️ 100.00% of deals are for data replicated across less than 4 storage providers.
 
 | Number of Providers | Unique Data Size | Total Deals Made | Deal Percentage |
 | ------------------: | ---------------: | ---------------: | --------------: |
