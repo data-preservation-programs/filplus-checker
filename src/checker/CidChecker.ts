@@ -324,7 +324,7 @@ export default class CidChecker {
       }
       if (provider.duplication_factor > 1.25) {
         const ratio = ((provider.duplication_factor - 1) / provider.duplication_factor * 100).toFixed(2)
-        content.push(emoji.get('warning') + ` ${ratio} of total deal sealed by ${providerLink} are duplicate data.`)
+        content.push(emoji.get('warning') + ` ${ratio}% of total deal sealed by ${providerLink} are duplicate data.`)
         content.push('')
         providerDistributionHealthy = false
       }

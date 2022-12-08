@@ -12,11 +12,11 @@ For most of the datacap application, below restrictions should apply. GeoIP loca
 
 ⚠️ [provider0](https://filfox.info/en/address/provider0) has sealed 40.00% of total datacap.
 
-⚠️ 75.00 of total deal sealed by [provider0](https://filfox.info/en/address/provider0) are duplicate data.
+⚠️ 75.00% of total deal sealed by [provider0](https://filfox.info/en/address/provider0) are duplicate data.
 
 ⚠️ [provider0](https://filfox.info/en/address/provider0) has unknown IP location.
 
-⚠️ 50.00 of total deal sealed by [provider5](https://filfox.info/en/address/provider5) are duplicate data.
+⚠️ 50.00% of total deal sealed by [provider5](https://filfox.info/en/address/provider5) are duplicate data.
 
 | Provider                                              |              Location | Total Deals Sealed | Percentage | Unique Data | Duplication Factor (Total Deals / Unique Data) |
 | :---------------------------------------------------- | --------------------: | -----------------: | ---------: | ----------: | ---------------------------------------------: |
