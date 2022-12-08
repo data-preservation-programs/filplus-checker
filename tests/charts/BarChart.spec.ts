@@ -1,5 +1,6 @@
 import BarChart from "../../src/charts/BarChart"
 import { ReplicationDistribution } from "../../src/checker/Types"
+import * as fs from "fs"
 
 
 describe('BarChart', () => {
@@ -31,6 +32,7 @@ describe('BarChart', () => {
     barChart = new BarChart(data)
 
     const image = await barChart.generateChartImage()
-    expect(image).toContain('data:image/png;base64')
+    fs.writeFileSync('tests/fixtures/barchart.png', image, 'base64')
+    expect(fs.readFileSync('tests/fixtures/barchart.png', 'base64')).toEqual(image)
   })
 })
