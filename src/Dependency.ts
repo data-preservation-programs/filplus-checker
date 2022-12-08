@@ -32,8 +32,6 @@ export function getCidChecker (logger: DeprecatedLogger): CidChecker {
     octokit,
     fileUploadConfig,
     process.env.FAKE_LINK === '1',
-    (str: string) => {
-      logger.info(str)
-    }
+    logger
   )
 }

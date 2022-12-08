@@ -46,7 +46,7 @@ Usually different applications owns different data and should not resolve to the
 
 ⚠️ CID sharing has been observed.
 
-| Other Client | Organizations      | Projects                | Total Deals Affected | Unique CIDs |
-| -----------: | :----------------- | :---------------------- | -------------------: | ----------: |
-|       fxxxx3 | `Some Company Inc` | [My Project3](test-url) |             200.00 B |           2 |
-|       fxxxx2 | `Some Company Inc` | [My Project2](test-url) |             100.00 B |           1 |
+| Other Client                                    | Organizations      | Projects                | Total Deals Affected | Unique CIDs |
+| :---------------------------------------------- | :----------------- | :---------------------- | -------------------: | ----------: |
+| [fxxxx3](https://filfox.info/en/address/fxxxx3) | `Some Company Inc` | [My Project3](test-url) |             200.00 B |           2 |
+| [fxxxx2](https://filfox.info/en/address/fxxxx2) | `Some Company Inc` | [My Project2](test-url) |             100.00 B |           1 |

@@ -8,15 +8,13 @@ import {
   ProviderDistributionRow, ReplicationDistributionRow, CidSharingRow
 } from './Types'
 import { parseIssue } from '../../dep/filecoin-verifier-tools/utils/large-issue-parser'
-import { generateGfmTable, escape, generateLink } from './MarkdownUtils'
+import { generateGfmTable, escape, generateLink, wrapInCode } from './MarkdownUtils'
 import xbytes from 'xbytes'
 import emoji from 'node-emoji'
-import { randomUUID } from 'crypto'
 import retry from 'async-retry'
 import { Octokit } from '@octokit/core'
 import { RestEndpointMethodTypes } from '@octokit/plugin-rest-endpoint-methods'
-
-export type Logger = (message: string) => void
+import { DeprecatedLogger } from 'probot/lib/types'
 
 export interface FileUploadConfig {
   owner: string
@@ -112,7 +110,7 @@ export default class CidChecker {
     private readonly octokit: Octokit,
     private readonly fileUploadConfig: FileUploadConfig,
     private readonly fakeLink: boolean,
-    private readonly logger: Logger) {
+    private readonly logger: DeprecatedLogger) {
   }
 
   private static getProjectNameFromTitle (titleStr: string): string {
@@ -195,12 +193,13 @@ export default class CidChecker {
         email: this.fileUploadConfig.committerEmail
       }
     }
-    const response: Response = await this.octokit.request('PUT /repos/{owner}/{repo}/contents/{path}', params)
-    if (response.status !== 201) {
-      // https://docs.github.com/en/rest/repos/contents?apiVersion=2022-11-28#create-or-update-file-contents--status-codes
-      throw new Error(`Failed to upload file. status: ${response.status}`)
-    }
 
+    this.logger.info({ owner: params.owner, repo: params.repo, path: params.path, message: params.message }, 'Uploading file')
+    const response: Response = await retry(async () => await this.octokit.request('PUT /repos/{owner}/{repo}/contents/{path}', params), {
+      maxTimeout: 60000
+    })
+
+    this.logger.info({ owner: params.owner, repo: params.repo, path: params.path, message: params.message }, 'Uploaded file')
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     return response.data.content!.download_url!
   }
@@ -233,6 +232,11 @@ export default class CidChecker {
     return result
   }
 
+  private static linkifyAddress(address: string): string {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    return `[${address.match(/.{1,41}/g)!.join('<br/>')}](https://filfox.info/en/address/${address})`
+  }
+
   public async check (event: IssueCommentCreatedEvent, criteria: Criteria = {
     maxProviderDealPercentage: 0.25,
     maxDuplicationFactor: 1.25,
@@ -240,23 +244,28 @@ export default class CidChecker {
     lowReplicaThreshold: 3
   }): Promise<string> {
     const { issue, repository } = event
-    this.logger(`Checking issue #${issue.number}...`)
+    let logger = this.logger.child({ issueNumber: issue.number })
+    logger.info('Checking issue')
     const applicationInfo = CidChecker.getApplicationInfo(issue)
-    this.logger(`Retrieved Application Info: ${JSON.stringify(applicationInfo)}`)
+    logger = logger.child({ clientAddress: applicationInfo.clientAddress })
+    logger.info(applicationInfo, 'Retrieved application info')
     const [providerDistributions, replicationDistributions, cidSharing] = await Promise.all([
       retry(async () => {
-        return await this.getStorageProviderDistribution(applicationInfo.clientAddress)
+        const result = await this.getStorageProviderDistribution(applicationInfo.clientAddress)
+        logger.info(result, 'Retrieved provider distribution')
+        return result
       }, { retries: 3 }),
       retry(async () => {
-        return await this.getReplicationDistribution(applicationInfo.clientAddress)
+        const result = await this.getReplicationDistribution(applicationInfo.clientAddress)
+        logger.info(result, 'Retrieved replication distribution')
+        return result
       }, { retries: 3 }),
       retry(async () => {
-        return await this.getCidSharing(applicationInfo.clientAddress)
+        const result = await this.getCidSharing(applicationInfo.clientAddress)
+        logger.info(result, 'Retrieved cid sharing')
+        return result
       }, { retries: 3 })
     ])
-    this.logger(`Retrieved Provider Distribution: ${JSON.stringify(providerDistributions)}`)
-    this.logger(`Retrieved Replication Distribution: ${JSON.stringify(replicationDistributions)}`)
-    this.logger(`Retrieved CID Sharing: ${JSON.stringify(cidSharing)}`)
 
     const providerDistributionRows: ProviderDistributionRow[] = providerDistributions.map(distribution => {
       const totalDealSize = xbytes(parseFloat(distribution.total_deal_size), { iec: true })
@@ -292,10 +301,10 @@ export default class CidChecker {
           const totalDealSize = xbytes(parseFloat(share.total_deal_size), { iec: true })
           const otherApplications = Array.from(new Set(await this.findIssueForClient(share.other_client_address)))
           return {
-            otherClientAddress: share.other_client_address,
+            otherClientAddress: CidChecker.linkifyAddress(share.other_client_address),
             totalDealSize,
             uniqueCidCount: share.unique_cid_count.toLocaleString('en-US'),
-            otherClientOrganizationNames: otherApplications.map(x => '`' + escape(x.organizationName) + '`').join('<br/>'),
+            otherClientOrganizationNames: otherApplications.map(x => wrapInCode(x.organizationName)).join('<br/>'),
             otherClientProjectNames: otherApplications.map(x => generateLink(escape(x.projectName), x.url, this.fakeLink)).join('<br/>')
           }
         }
@@ -305,19 +314,19 @@ export default class CidChecker {
     const providerDistributionImage = this.getImageForProviderDistribution(providerDistributions)
     const replicationDistributionImage = this.getImageForReplicationDistribution(replicationDistributions)
     const providerDistributionImageUrl = await this.uploadFile(
-      `${repository.full_name}/issues/${issue.id}/${randomUUID()}.png`,
+      `${repository.full_name}/issues/${issue.number}/${Date.now()}.png`,
       providerDistributionImage,
-      `Upload provider distribution image for issue #${issue.id} of ${repository.full_name}`)
+      `Upload provider distribution image for issue #${issue.number} of ${repository.full_name}`)
     const replicationDistributionImageUrl = await this.uploadFile(
-      `${repository.full_name}/issues/${issue.id}/${randomUUID()}.png`,
+      `${repository.full_name}/issues/${issue.number}/${Date.now()}.png`,
       replicationDistributionImage,
-      `Upload replication distribution image for issue #${issue.id} of ${repository.full_name}`)
+      `Upload replication distribution image for issue #${issue.number} of ${repository.full_name}`)
 
     const content: string[] = []
     content.push('## DataCap and CID Checker Report')
-    content.push(` - Organization: \`${escape(applicationInfo.organizationName)}\``)
-    content.push(` - Project: \`${escape(applicationInfo.projectName)}\``)
-    content.push(` - Client: \`${escape(applicationInfo.clientAddress)}\``)
+    content.push(` - Organization: ${wrapInCode(applicationInfo.organizationName)}`)
+    content.push(` - Project: ${wrapInCode(applicationInfo.projectName)}`)
+    content.push(` - Client: ${wrapInCode(applicationInfo.clientAddress)}`)
     content.push('### Storage Provider Distribution')
     content.push('The below table shows the distribution of storage providers that have stored data for this client.')
     content.push('For most of the datacap application, below restrictions should apply. GeoIP locations are resolved with Maxmind GeoIP database.')
@@ -330,23 +339,27 @@ export default class CidChecker {
     for (const provider of providerDistributions) {
       const providerLink = generateLink(provider.provider, `https://filfox.info/en/address/${provider.provider}`)
       if (provider.percentage > criteria.maxProviderDealPercentage) {
+        logger.info({ provider: provider.provider, percentage: provider.percentage }, 'Provider exceeds max percentage')
         content.push(emoji.get('warning') + ` ${providerLink} has sealed ${(provider.percentage * 100).toFixed(2)}% of total datacap.`)
         content.push('')
         providerDistributionHealthy = false
       }
       if (provider.duplication_factor > 1.25) {
         const ratio = ((provider.duplication_factor - 1) / provider.duplication_factor * 100).toFixed(2)
+        logger.info({ provider: provider.provider, duplicationFactor: provider.duplication_factor }, 'Provider exceeds max duplication factor')
         content.push(emoji.get('warning') + ` ${ratio}% of total deal sealed by ${providerLink} are duplicate data.`)
         content.push('')
         providerDistributionHealthy = false
       }
       if (provider.country == null || provider.country === '') {
+        logger.info({ provider: provider.provider }, 'Provider does not have IP location')
         content.push(emoji.get('warning') + ` ${providerLink} has unknown IP location.`)
         content.push('')
         providerDistributionHealthy = false
       }
     }
     if (new Set(providerDistributionRows.map(row => row.location)).size <= 1) {
+      logger.info('Client has data stored in only one region')
       content.push(emoji.get('warning') + ' All storage providers are located in the same region.')
       content.push('')
       providerDistributionHealthy = false
@@ -378,6 +391,7 @@ export default class CidChecker {
       .map(distribution => distribution.percentage)
       .reduce((a, b) => a + b, 0)
     if (lowReplicaPercentage > criteria.maxPercentageForLowReplica) {
+      logger.info({ lowReplicaPercentage }, 'Low replica percentage exceeds max percentage')
       content.push(emoji.get('warning') + ` ${(lowReplicaPercentage * 100).toFixed(2)}% of deals are for data replicated across less than 4 storage providers.`)
       content.push('')
     } else {
@@ -398,10 +412,13 @@ export default class CidChecker {
     content.push('Usually different applications owns different data and should not resolve to the same CID.')
     content.push('')
     if (cidSharingRows.length > 0) {
+      for (const row of cidSharingRows) {
+        logger.info({ otherClientAddress: row.otherClientAddress }, 'CID is shared with another client')
+      }
       content.push(emoji.get('warning') + ' CID sharing has been observed.')
       content.push('')
       content.push(generateGfmTable(cidSharingRows, [
-        ['otherClientAddress', { name: 'Other Client', align: 'r' }],
+        ['otherClientAddress', { name: 'Other Client', align: 'l' }],
         ['otherClientOrganizationNames', { name: 'Organizations', align: 'l' }],
         ['otherClientProjectNames', { name: 'Projects', align: 'l' }],
         ['totalDealSize', { name: 'Total Deals Affected', align: 'r' }],
@@ -412,6 +429,12 @@ export default class CidChecker {
     }
 
     content.push('')
-    return content.join('\n')
+    const joinedContent = content.join('\n')
+    const contentUrl = await this.uploadFile(
+      `${repository.full_name}/issues/${issue.number}/${Date.now()}.md`,
+      Buffer.from(joinedContent).toString('base64'),
+      `Upload report for issue #${issue.number} of ${repository.full_name}`)
+    logger.info({ contentUrl }, 'Report content uploaded')
+    return joinedContent
   }
 }

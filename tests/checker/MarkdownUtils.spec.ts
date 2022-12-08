@@ -1,4 +1,10 @@
-import {ColumnConfig, generateGfmTable, escape, generateLink} from "../../src/checker/MarkdownUtils";
+import {
+  ColumnConfig,
+  generateGfmTable,
+  escape,
+  generateLink,
+  wrapInCode
+} from "../../src/checker/MarkdownUtils";
 
 describe('MarkdownUtils', () => {
   describe('generateGfmTable', () => {
@@ -30,6 +36,12 @@ describe('MarkdownUtils', () => {
       const text = '\\`*_{}[]<>()#+-.!|'
       const result = escape(text)
       expect(result).toBe('\\\\\\`\\*\\_\\{\\}\\[\\]\\<\\>\\(\\)\\#\\+\\-\\.\\!\\|')
+    })
+
+    it('should escape markdown code', () => {
+      const text = 'my`org'
+      const result = wrapInCode(text)
+      expect(result).toBe("`my'org`")
     })
   })
 

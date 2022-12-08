@@ -4,6 +4,7 @@ import * as fs from "fs";
 import {fileUploadConfig, setupDatabase, testDatabase} from "./TestSetup";
 import nock from "nock";
 import {ProbotOctokit} from "probot";
+const logger = require('pino')()
 
 describe('CidChecker', () => {
   let checker: CidChecker
@@ -20,9 +21,7 @@ describe('CidChecker', () => {
     nock.disableNetConnect();
     checker = new CidChecker(testDatabase, new ProbotOctokit({ auth: {
        token: 'test-token'
-      }}), fileUploadConfig, false, (str) => {
-      console.log(str)
-    })
+      }}), fileUploadConfig, false, logger)
     issue = <any>{
       html_url: 'test-url',
       id: 1,
@@ -204,6 +203,8 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
         .reply(201, {content: { "download_url": "./provider.png" }})
         .put(uri => uri.includes("/repos/test-owner/test-repo/contents"))
         .reply(201, {content: { "download_url": "./replica.png" }})
+        .put(uri => uri.includes("/repos/test-owner/test-repo/contents"))
+        .reply(201, {content: { "download_url": "./report.md" }})
         .get(uri => uri.includes("issue%20fxxxx3"))
         .reply(200, {items: [issue3]})
         .get(uri => uri.includes("issue%20fxxxx2"))
