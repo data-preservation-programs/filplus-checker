@@ -47,11 +47,11 @@ export default class GeoMap {
         labels: entries.map(e => e.label),
         datasets: [{
           outline: GeoMap.countries,
-          outlineBackgroundColor: 'rgba(207,222,255,0.7)',
+          outlineBackgroundColor: '#BDBDBD',
           outlineBorderWidth: 0.3,
           outlineBorderColor: 'rgba(0,0,0,1)',
           showOutline: true,
-          backgroundColor: 'rgba(14,0,206,0.55)',
+          backgroundColor: '#424242',
           data: entries
         }]
       },
