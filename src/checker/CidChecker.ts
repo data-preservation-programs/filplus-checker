@@ -273,7 +273,7 @@ export default class CidChecker {
   }]): Promise<string | undefined> {
     const { issue, repository } = event
     let logger = this.logger.child({ issueNumber: issue.number })
-    logger.info('Checking issue')
+    logger.info({ label: event.label }, 'Checking issue')
     const applicationInfo = CidChecker.getApplicationInfo(issue)
     logger = logger.child({ clientAddress: applicationInfo.clientAddress })
     logger.info(applicationInfo, 'Retrieved application info')
@@ -370,7 +370,6 @@ export default class CidChecker {
       content.push('')
       content.push(`**Since this is the ${ordinal(allocations + 1)} allocation, the following restrictions have been relaxed:**`)
     }
-    content.push('The restriction might be relaxed if it is the first few rounds of allocations.')
     content.push(` - Storage provider should not exceed ${(criteria.maxProviderDealPercentage * 100).toFixed(0)}% of total datacap.`)
     content.push(` - Storage provider should not be storing duplicate data for more than ${(criteria.maxDuplicationFactor * 100 - 100).toFixed(0)}%.`)
     content.push(' - Storage provider should have published its public IP address.')

@@ -20,7 +20,7 @@ const handler: ApplicationFunction = (app: Probot, _options: ApplicationFunction
     const checker = getCidChecker(app.log)
     const result = await checker.check(context.payload, criteria)
     if (result === undefined) {
-      app.log('No comment to post')
+      app.log.info('No comment to post')
       return
     }
     app.log({ body: result })
