@@ -1,4 +1,4 @@
-import { Issue, IssueCommentCreatedEvent } from '@octokit/webhooks-types'
+import { Issue, IssuesLabeledEvent, Repository } from '@octokit/webhooks-types'
 import { Pool } from 'pg'
 import {
   ApplicationInfo,
@@ -110,7 +110,8 @@ export default class CidChecker {
     private readonly octokit: Octokit,
     private readonly fileUploadConfig: FileUploadConfig,
     private readonly fakeLink: boolean,
-    private readonly logger: DeprecatedLogger) {
+    private readonly logger: DeprecatedLogger,
+    private readonly allocationLabels: string[]) {
   }
 
   private static getProjectNameFromTitle (titleStr: string): string {
@@ -237,18 +238,51 @@ export default class CidChecker {
     return `[${address.match(/.{1,41}/g)!.join('<br/>')}](https://filfox.info/en/address/${address})`
   }
 
-  public async check (event: IssueCommentCreatedEvent, criteria: Criteria = {
+  private async getNumberOfAllocations (issue: Issue, repo: Repository): Promise<number> {
+    type Params = RestEndpointMethodTypes['issues']['listEvents']['parameters']
+    type Response = RestEndpointMethodTypes['issues']['listEvents']['response']
+    let page = 1
+    const events = []
+    while (true) {
+      const params: Params = {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        owner: repo.owner.login,
+        repo: repo.name,
+        issue_number: issue.number,
+        per_page: 100,
+        page
+      }
+      this.logger.info(params, 'Getting events for issue')
+      const response: Response = await retry(async () => await this.octokit.request('GET /repos/{owner}/{repo}/issues/{issue_number}/events', params))
+      events.push(...response.data)
+      if (response.data.length < 100) {
+        break
+      }
+      page++
+    }
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion,@typescript-eslint/no-non-null-asserted-optional-chain
+    return events.filter(event => event.event === 'labeled' && this.allocationLabels.includes(event.label?.name!)).length
+  }
+
+  public async check (event: IssuesLabeledEvent, criterias: Criteria[] = [{
     maxProviderDealPercentage: 0.25,
     maxDuplicationFactor: 1.25,
     maxPercentageForLowReplica: 0.25,
     lowReplicaThreshold: 3
-  }): Promise<string> {
+  }]): Promise<string | undefined> {
     const { issue, repository } = event
     let logger = this.logger.child({ issueNumber: issue.number })
     logger.info('Checking issue')
     const applicationInfo = CidChecker.getApplicationInfo(issue)
     logger = logger.child({ clientAddress: applicationInfo.clientAddress })
     logger.info(applicationInfo, 'Retrieved application info')
+    const allocations = await this.getNumberOfAllocations(issue, repository)
+    logger.info({ allocations }, 'Retrieved number of previous allocations')
+    if (allocations === 0) {
+      return undefined
+    }
+    const criteria = criterias.length > allocations - 1 ? criterias[allocations - 1] : criterias[criterias.length - 1]
+
     const [providerDistributions, replicationDistributions, cidSharing] = await Promise.all([
       retry(async () => {
         const result = await this.getStorageProviderDistribution(applicationInfo.clientAddress)
@@ -330,6 +364,7 @@ export default class CidChecker {
     content.push('### Storage Provider Distribution')
     content.push('The below table shows the distribution of storage providers that have stored data for this client.')
     content.push('For most of the datacap application, below restrictions should apply. GeoIP locations are resolved with Maxmind GeoIP database.')
+    content.push('The restriction might be relaxed if it is the first few rounds of allocations.')
     content.push(` - Storage provider should not exceed ${(criteria.maxProviderDealPercentage * 100).toFixed(0)}% of total datacap.`)
     content.push(` - Storage provider should not be storing duplicate data for more than ${(criteria.maxDuplicationFactor * 100 - 100).toFixed(0)}%.`)
     content.push(' - Storage provider should have published its public IP address.')

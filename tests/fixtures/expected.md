@@ -5,6 +5,7 @@
 ### Storage Provider Distribution
 The below table shows the distribution of storage providers that have stored data for this client.
 For most of the datacap application, below restrictions should apply. GeoIP locations are resolved with Maxmind GeoIP database.
+The restriction might be relaxed if it is the first few rounds of allocations.
  - Storage provider should not exceed 25% of total datacap.
  - Storage provider should not be storing duplicate data for more than 25%.
  - Storage provider should have published its public IP address.

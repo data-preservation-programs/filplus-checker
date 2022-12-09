@@ -2,8 +2,8 @@ import nock from "nock";
 import {Probot, ProbotOctokit} from "probot";
 import handler from "../src/app";
 import * as dependency from "../src/Dependency";
-import payload from './fixtures/comment-created-event.json'
 import {setupDatabase} from "./checker/TestSetup";
+import * as event from "./fixtures/issue-labelled.json";
 
 describe('checkerApp', () => {
   let probot: Probot;
@@ -29,7 +29,7 @@ describe('checkerApp', () => {
   it('should post a new comment when triggered', async () => {
     let newComment = ''
     const mock = nock("https://api.github.com")
-      .post("/repos/testuser/cid-checker-bot/issues/1/comments", (body: any) => {
+      .post("/repos/data-preservation-programs/filecoin-plus-large-datasets/issues/1/comments", (body: any) => {
         newComment = body.body
         return true;
       })
@@ -37,7 +37,9 @@ describe('checkerApp', () => {
 
     const mockChecker = jasmine.createSpyObj('CidChecker', { check: Promise.resolve('test-content') });
     spyOn(dependency, 'getCidChecker').and.returnValue(mockChecker)
-    await probot.receive({id: '1', name: 'issue_comment', payload: <any>payload.payload});
+    process.env.TARGET_LABEL = 'bot:readyToSign'
+    process.env.CRITERIA = '[{"lowReplicaThreshold": 1, "maxDuplicationFactor": 1, "maxProviderDealPercentage": 1, "maxPercentageForLowReplica": 1}]'
+    await probot.receive({id: '1', name: 'issues', payload: <any> event.payload});
 
     if (mock.pendingMocks().length > 0) {
       console.error(mock.pendingMocks())

@@ -1,5 +1,5 @@
 import CidChecker from "../../src/checker/CidChecker";
-import {Issue, IssueCommentCreatedEvent} from "@octokit/webhooks-types";
+import {Issue, IssuesLabeledEvent} from "@octokit/webhooks-types";
 import * as fs from "fs";
 import {fileUploadConfig, setupDatabase, testDatabase} from "./TestSetup";
 import nock from "nock";
@@ -9,7 +9,7 @@ const logger = require('pino')()
 describe('CidChecker', () => {
   let checker: CidChecker
   let issue: Issue
-  let event: IssueCommentCreatedEvent
+  let event: IssuesLabeledEvent
 
   afterEach(() => {
     nock.cleanAll();
@@ -21,7 +21,7 @@ describe('CidChecker', () => {
     nock.disableNetConnect();
     checker = new CidChecker(testDatabase, new ProbotOctokit({ auth: {
        token: 'test-token'
-      }}), fileUploadConfig, false, logger)
+      }}), fileUploadConfig, false, logger, ['state:Granted', 'state:DataCapAllocated'])
     issue = <any>{
       html_url: 'test-url',
       id: 1,
@@ -41,7 +41,11 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
     event = <any>{
       issue: issue,
       repository: {
-        full_name: 'testowner/testrepo'
+        full_name: 'test-owner/test-repo',
+        owner: {
+          login: 'test-owner'
+        },
+        name: 'test-repo'
       }
     }
   });
@@ -199,6 +203,8 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
       issue3.title = issue3.title.replace('My Project', 'My Project3')
 
       const mock = nock("https://api.github.com")
+        .get(uri => uri.includes("events"))
+        .reply(200, [{event: 'labeled', label: { name: 'state:Granted'}}])
         .put(uri => uri.includes("/repos/test-owner/test-repo/contents"))
         .reply(201, {content: { "download_url": "./provider.png" }})
         .put(uri => uri.includes("/repos/test-owner/test-repo/contents"))
@@ -210,8 +216,11 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
         .get(uri => uri.includes("issue%20fxxxx2"))
         .reply(200, {items: [issue2]})
       const report = await checker.check(event)
-      expect(mock.isDone()).toBeTruthy()
-      //fs.writeFileSync('tests/fixtures/expected.md', report)
+      if (mock.pendingMocks().length > 0) {
+        console.error(mock.pendingMocks())
+      }
+      expect(mock.isDone()).toBeTruthy();
+      //fs.writeFileSync('tests/fixtures/expected.md', report!)
       expect(report).toEqual(fs.readFileSync('tests/fixtures/expected.md', 'utf8'))
     })
   })
