@@ -15,6 +15,7 @@ import retry from 'async-retry'
 import { Octokit } from '@octokit/core'
 import { RestEndpointMethodTypes } from '@octokit/plugin-rest-endpoint-methods'
 import { DeprecatedLogger } from 'probot/lib/types'
+import ordinal from 'ordinal'
 
 export interface FileUploadConfig {
   owner: string
@@ -277,6 +278,7 @@ export default class CidChecker {
     logger = logger.child({ clientAddress: applicationInfo.clientAddress })
     logger.info(applicationInfo, 'Retrieved application info')
     const allocations = await this.getNumberOfAllocations(issue, repository)
+    const isEarlyAllocation = criterias.length > allocations
     logger.info({ allocations }, 'Retrieved number of previous allocations')
     if (allocations === 0) {
       return undefined
@@ -364,6 +366,10 @@ export default class CidChecker {
     content.push('### Storage Provider Distribution')
     content.push('The below table shows the distribution of storage providers that have stored data for this client.')
     content.push('For most of the datacap application, below restrictions should apply. GeoIP locations are resolved with Maxmind GeoIP database.')
+    if (isEarlyAllocation) {
+      content.push('')
+      content.push(`**Since this is the ${ordinal(allocations + 1)} allocation, the following restrictions have been relaxed:**`)
+    }
     content.push('The restriction might be relaxed if it is the first few rounds of allocations.')
     content.push(` - Storage provider should not exceed ${(criteria.maxProviderDealPercentage * 100).toFixed(0)}% of total datacap.`)
     content.push(` - Storage provider should not be storing duplicate data for more than ${(criteria.maxDuplicationFactor * 100 - 100).toFixed(0)}%.`)
@@ -419,7 +425,13 @@ export default class CidChecker {
 
     content.push('### Deal Data Replication')
     content.push('The below table shows how each many unique data are replicated across storage providers.')
-    content.push(`For most of the datacap application, the number of replicas should be more than ${criteria.lowReplicaThreshold}.`)
+    if (criteria.maxPercentageForLowReplica < 1) {
+      if (isEarlyAllocation) {
+        content.push('')
+        content.push(`**Since this is the ${ordinal(allocations + 1)} allocation, the following restrictions have been relaxed:**`)
+      }
+      content.push(`- ${(100 - criteria.maxPercentageForLowReplica * 100).toFixed(0)}% of data needs to be stored with at least ${criteria.lowReplicaThreshold} providers.`)
+    }
     content.push('')
     const lowReplicaPercentage = replicationDistributions
       .filter(distribution => distribution.num_of_replicas <= criteria.lowReplicaThreshold)
@@ -427,7 +439,7 @@ export default class CidChecker {
       .reduce((a, b) => a + b, 0)
     if (lowReplicaPercentage > criteria.maxPercentageForLowReplica) {
       logger.info({ lowReplicaPercentage }, 'Low replica percentage exceeds max percentage')
-      content.push(emoji.get('warning') + ` ${(lowReplicaPercentage * 100).toFixed(2)}% of deals are for data replicated across less than 4 storage providers.`)
+      content.push(emoji.get('warning') + ` ${(lowReplicaPercentage * 100).toFixed(2)}% of deals are for data replicated across less than ${criteria.lowReplicaThreshold + 1} storage providers.`)
       content.push('')
     } else {
       content.push(emoji.get('heavy_check_mark') + ' Data replication looks healthy.')

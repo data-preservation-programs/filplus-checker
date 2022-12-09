@@ -50,6 +50,7 @@
     "markdown-table": "^2.0.0",
     "nock": "^13.2.9",
     "node-emoji": "^1.11.0",
+    "ordinal": "^1.0.3",
     "pg": "^8.8.0",
     "probot": "^12.2.8",
     "smee-client": "^1.2.2",
