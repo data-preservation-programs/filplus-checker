@@ -1,32 +1,35 @@
 import { ApplicationFunction, Probot } from 'probot'
 import { ApplicationFunctionOptions } from 'probot/lib/types'
-import { parseIdentifiers } from './utils'
 import { getCidChecker } from './Dependency'
+import { Criteria } from './checker/CidChecker'
 
-const handler: ApplicationFunction = (app: Probot, options: ApplicationFunctionOptions): void => {
-  app.log('Yay, the app was loaded!')
-  app.log('options', options)
+const handler: ApplicationFunction = (app: Probot, _options: ApplicationFunctionOptions): void => {
+  app.on(['issues.labeled'], async (context) => {
+    if (process.env.TARGET_LABEL !== context.payload.label?.name) {
+      return
+    }
 
-  app.on(['issue_comment.created'], async (context) => {
-    app.log.info({ context })
-    const { body } = context.payload.comment
+    const criteria: Criteria[] = JSON.parse(process.env.CRITERIA ?? '[]')
+    if (criteria.length === 0 || criteria.some(c =>
+      c.lowReplicaThreshold === undefined ||
+      c.maxDuplicationFactor === undefined ||
+      c.maxProviderDealPercentage === undefined ||
+      c.maxPercentageForLowReplica === undefined)) {
+      throw new Error('Invalid environment variable CRITERIA')
+    }
+    const checker = getCidChecker(app.log)
+    const result = await checker.check(context.payload, criteria)
+    if (result === undefined) {
+      app.log('No comment to post')
+      return
+    }
+    app.log({ body: result })
+    const issueComment = context.issue({
+      body: result
+    })
 
-    if (body.match(/Stats & Info for DataCap Allocation/i) != null) {
-      const { notaryAddress, clientAddress, interplanetaryLink, datasetIssueLink } = parseIdentifiers(app, body)
-      app.log.info({ notaryAddress, clientAddress, interplanetaryLink, datasetIssueLink })
-
-      const checker = getCidChecker(app.log)
-
-      const result = await checker.check(context.payload)
-
-      const issueComment = context.issue({
-        body: result
-      })
-
-      app.log.info({ issueComment })
-      if (process.env.DRY_RUN !== 'true' && process.env.DRY_RUN !== '1') {
-        await context.octokit.issues.createComment(issueComment)
-      }
+    if (process.env.DRY_RUN !== 'true' && process.env.DRY_RUN !== '1') {
+      await context.octokit.issues.createComment(issueComment)
     }
   })
 }

@@ -5,6 +5,7 @@
 ### Storage Provider Distribution
 The below table shows the distribution of storage providers that have stored data for this client.
 For most of the datacap application, below restrictions should apply. GeoIP locations are resolved with Maxmind GeoIP database.
+The restriction might be relaxed if it is the first few rounds of allocations.
  - Storage provider should not exceed 25% of total datacap.
  - Storage provider should not be storing duplicate data for more than 25%.
  - Storage provider should have published its public IP address.
@@ -30,7 +31,7 @@ For most of the datacap application, below restrictions should apply. GeoIP loca
 ![Provider Distribution](./provider.png)
 ### Deal Data Replication
 The below table shows how each many unique data are replicated across storage providers.
-For most of the datacap application, the number of replicas should be more than 3.
+- 75% of data needs to be stored with at least 3 providers.
 
 ⚠️ 100.00% of deals are for data replicated across less than 4 storage providers.
 
@@ -46,7 +47,7 @@ Usually different applications owns different data and should not resolve to the
 
 ⚠️ CID sharing has been observed.
 
-| Other Client | Organizations      | Projects                | Total Deals Affected | Unique CIDs |
-| -----------: | :----------------- | :---------------------- | -------------------: | ----------: |
-|       fxxxx3 | `Some Company Inc` | [My Project3](test-url) |             200.00 B |           2 |
-|       fxxxx2 | `Some Company Inc` | [My Project2](test-url) |             100.00 B |           1 |
+| Other Client                                    | Organizations      | Projects                | Total Deals Affected | Unique CIDs |
+| :---------------------------------------------- | :----------------- | :---------------------- | -------------------: | ----------: |
+| [fxxxx3](https://filfox.info/en/address/fxxxx3) | `Some Company Inc` | [My Project3](test-url) |             200.00 B |           2 |
+| [fxxxx2](https://filfox.info/en/address/fxxxx2) | `Some Company Inc` | [My Project2](test-url) |             100.00 B |           1 |

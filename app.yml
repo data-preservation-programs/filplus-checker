@@ -22,9 +22,9 @@ default_events:
   # - deployment_status
   # - fork
   # - gollum
-  - issue_comment
-  - issues
-# - label
+  # - issue_comment
+  # - issues
+  - label
 # - milestone
 # - member
 # - membership

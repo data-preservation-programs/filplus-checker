@@ -21,6 +21,10 @@ export function escape (text: string): string {
   return text.replace(/([\\`*_{}[\]<>()#+\-.!|])/g, '\\$1')
 }
 
+export function wrapInCode (text: string): string {
+  return '`' + text.replace('`', "'") + '`'
+}
+
 /**
  * Generate the markdown link text
  * @param text
