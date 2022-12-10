@@ -4,6 +4,7 @@ import * as fs from "fs";
 import {fileUploadConfig, setupDatabase, testDatabase} from "./TestSetup";
 import nock from "nock";
 import {ProbotOctokit} from "probot";
+import {Multiaddr} from "multiaddr";
 const logger = require('pino')()
 
 describe('CidChecker', () => {
@@ -11,17 +12,11 @@ describe('CidChecker', () => {
   let issue: Issue
   let event: IssuesLabeledEvent
 
-  afterEach(() => {
-    nock.cleanAll();
-    nock.enableNetConnect();
-  });
-
   beforeAll(async () => {
     await setupDatabase()
-    nock.disableNetConnect();
     checker = new CidChecker(testDatabase, new ProbotOctokit({ auth: {
        token: 'test-token'
-      }}), fileUploadConfig, false, logger, ['state:Granted', 'state:DataCapAllocated'])
+      }}), fileUploadConfig, false, logger, process.env.IPINFO_TOKEN!,['state:Granted', 'state:DataCapAllocated'])
     issue = <any>{
       html_url: 'test-url',
       id: 1,
@@ -121,11 +116,6 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
         {
           provider: 'provider0',
           total_deal_size: '400',
-          country: '',
-          region: null,
-          city: null,
-          latitude: jasmine.any(Number),
-          longitude: jasmine.any(Number),
           percentage: 0.4,
           duplication_factor: 4,
           unique_data_size: '100',
@@ -133,11 +123,6 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
         {
           provider: 'provider5',
           total_deal_size: '200',
-          country: 'CN',
-          region: '',
-          city: 'Beijing',
-          latitude: jasmine.any(Number),
-          longitude: jasmine.any(Number),
           percentage: 0.2,
           duplication_factor: 2,
           unique_data_size: '100',
@@ -145,11 +130,6 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
         {
           provider: 'provider1',
           total_deal_size: '100',
-          country: 'US',
-          region: 'CA',
-          city: 'San Francisco',
-          latitude: jasmine.any(Number),
-          longitude: jasmine.any(Number),
           percentage: 0.1,
           duplication_factor: 1,
           unique_data_size: '100',
@@ -157,11 +137,6 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
         {
           provider: 'provider2',
           total_deal_size: '100',
-          country: 'US',
-          region: 'CA',
-          city: 'San Francisco',
-          latitude: jasmine.any(Number),
-          longitude: jasmine.any(Number),
           percentage: 0.1,
           duplication_factor: 1,
           unique_data_size: '100',
@@ -169,11 +144,6 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
         {
           provider: 'provider3',
           total_deal_size: '100',
-          country: 'US',
-          region: 'OR',
-          city: 'Portland',
-          latitude: jasmine.any(Number),
-          longitude: jasmine.any(Number),
           percentage: 0.1,
           duplication_factor: 1,
           unique_data_size: '100',
@@ -181,11 +151,6 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
         {
           provider: 'provider4',
           total_deal_size: '100',
-          country: 'US',
-          region: 'NY',
-          city: 'New York',
-          latitude: jasmine.any(Number),
-          longitude: jasmine.any(Number),
           percentage: 0.1,
           duplication_factor: 1,
           unique_data_size: '100',
@@ -193,7 +158,45 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
       ])
     })
   })
+
+  describe('getIpFromMultiaddr', () => {
+    it('should return the ip for ipv4', async () => {
+      const multiaddr = Buffer.from(new Multiaddr('/ip4/1.1.1.1/tcp/1234').bytes).toString('base64');
+      const address = checker['getIpFromMultiaddr'](multiaddr);
+      expect(await address).toEqual(['1.1.1.1']);
+    })
+  })
+
+  describe('getMinerInfo', () => {
+    it('should return miner details', async () => {
+      const minerInfo = await checker['getMinerInfo']('f064218');
+      expect(minerInfo).toEqual(jasmine.objectContaining({
+        PeerId: '12D3KooWKjMeR4zo5dbDdmuVNBPoYUp11jbh6RuPXqge7MQZykZt',
+        Multiaddrs: ['Ngx4eGEuZGRucy5uZXQGXcE='],
+        SectorSize: 34359738368
+      }));
+    });
+  })
+
+  describe('getLocation', () => {
+    it('should return the location', async () => {
+      const location = await checker['getLocation']('f01974746')
+      expect(location).toBeNull()
+    })
+    it('should return the location', async () => {
+      const location = await checker['getLocation']('f01887652')
+      expect(location).toEqual({ city: 'Ashburn', country: 'US', region: 'Virginia', latitude: 39.0437, longitude: -77.4875 })
+    })
+  })
+
   describe('check', () => {
+    afterEach(() => {
+      nock.cleanAll();
+      nock.enableNetConnect();
+    });
+    beforeAll( () => {
+      nock.disableNetConnect();
+    })
     it('should return the markdown content (fake)', async () => {
       const issue2 = JSON.parse(JSON.stringify(issue))
       issue2.body = issue2.body.replace('f12345', 'fxxxx2')
@@ -215,6 +218,37 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
         .reply(200, {items: [issue3]})
         .get(uri => uri.includes("issue%20fxxxx2"))
         .reply(200, {items: [issue2]})
+      spyOn<any>(checker, 'getLocation').and.returnValues(
+        Promise.resolve(null),
+        Promise.resolve(null),
+        Promise.resolve({
+          city: 'city1',
+          country: 'US',
+          region: 'region1',
+          latitude: 39.0437,
+          longitude: -77.4875
+        }),
+        Promise.resolve({
+          city: 'city2',
+          country: 'US',
+          region: 'region2',
+          latitude: 39.0437,
+          longitude: -77.4875
+        }),
+        Promise.resolve({
+          city: 'city3',
+          country: 'US',
+          region: 'region3',
+          latitude: 39.0437,
+          longitude: -77.4875
+        }),
+        Promise.resolve({
+          city: 'city4',
+          country: 'US',
+          region: 'region4',
+          latitude: 39.0437,
+          longitude: -77.4875
+        }),)
       const report = await checker.check(event)
       if (mock.pendingMocks().length > 0) {
         console.error(mock.pendingMocks())

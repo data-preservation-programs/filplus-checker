@@ -5,7 +5,12 @@ import {
   CidSharing,
   ReplicationDistribution,
   ProviderDistribution,
-  ProviderDistributionRow, ReplicationDistributionRow, CidSharingRow
+  ProviderDistributionRow,
+  ReplicationDistributionRow,
+  CidSharingRow,
+  Location,
+  ProviderDistributionWithLocation,
+  MinerInfo, IpInfoResponse
 } from './Types'
 import { parseIssue } from '../../dep/filecoin-verifier-tools/utils/large-issue-parser'
 import { generateGfmTable, escape, generateLink, wrapInCode } from './MarkdownUtils'
@@ -16,6 +21,9 @@ import { Octokit } from '@octokit/core'
 import { RestEndpointMethodTypes } from '@octokit/plugin-rest-endpoint-methods'
 import { DeprecatedLogger } from 'probot/lib/types'
 import ordinal from 'ordinal'
+import { resolve4, resolve6 } from 'dns/promises'
+import axios from 'axios'
+import { Multiaddr } from 'multiaddr'
 
 export interface FileUploadConfig {
   owner: string
@@ -56,14 +64,8 @@ export default class CidChecker {
       SELECT miners.provider,
              total_deal_size,
              unique_data_size,
-             total_deal_size::FLOAT / unique_data_size AS duplication_factor,
-             country,
-             region,
-             city,
-             latitude,
-             longitude
+             total_deal_size::FLOAT / unique_data_size AS duplication_factor
       FROM miners
-               LEFT OUTER JOIN active_miners ON miners.provider = active_miners.miner_id
       ORDER BY total_deal_size DESC`
 
   private static readonly ReplicaDistributionQuery = `
@@ -112,6 +114,7 @@ export default class CidChecker {
     private readonly fileUploadConfig: FileUploadConfig,
     private readonly fakeLink: boolean,
     private readonly logger: DeprecatedLogger,
+    private readonly ipinfoToken: string,
     private readonly allocationLabels: string[]) {
   }
 
@@ -197,16 +200,14 @@ export default class CidChecker {
     }
 
     this.logger.info({ owner: params.owner, repo: params.repo, path: params.path, message: params.message }, 'Uploading file')
-    const response: Response = await retry(async () => await this.octokit.request('PUT /repos/{owner}/{repo}/contents/{path}', params), {
-      maxTimeout: 60000
-    })
+    const response: Response = await retry(async () => await this.octokit.request('PUT /repos/{owner}/{repo}/contents/{path}', params))
 
     this.logger.info({ owner: params.owner, repo: params.repo, path: params.path, message: params.message }, 'Uploaded file')
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     return response.data.content!.download_url!
   }
 
-  private getImageForProviderDistribution (_providerDistributions: ProviderDistribution[]): string {
+  private getImageForProviderDistribution (_providerDistributions: ProviderDistributionWithLocation[]): string {
     return 'iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAApgAAAKYB3X3/OAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAANCSURBVEiJtZZPbBtFFMZ/M7ubXdtdb1xSFyeilBapySVU8h8OoFaooFSqiihIVIpQBKci6KEg9Q6H9kovIHoCIVQJJCKE1ENFjnAgcaSGC6rEnxBwA04Tx43t2FnvDAfjkNibxgHxnWb2e/u992bee7tCa00YFsffekFY+nUzFtjW0LrvjRXrCDIAaPLlW0nHL0SsZtVoaF98mLrx3pdhOqLtYPHChahZcYYO7KvPFxvRl5XPp1sN3adWiD1ZAqD6XYK1b/dvE5IWryTt2udLFedwc1+9kLp+vbbpoDh+6TklxBeAi9TL0taeWpdmZzQDry0AcO+jQ12RyohqqoYoo8RDwJrU+qXkjWtfi8Xxt58BdQuwQs9qC/afLwCw8tnQbqYAPsgxE1S6F3EAIXux2oQFKm0ihMsOF71dHYx+f3NND68ghCu1YIoePPQN1pGRABkJ6Bus96CutRZMydTl+TvuiRW1m3n0eDl0vRPcEysqdXn+jsQPsrHMquGeXEaY4Yk4wxWcY5V/9scqOMOVUFthatyTy8QyqwZ+kDURKoMWxNKr2EeqVKcTNOajqKoBgOE28U4tdQl5p5bwCw7BWquaZSzAPlwjlithJtp3pTImSqQRrb2Z8PHGigD4RZuNX6JYj6wj7O4TFLbCO/Mn/m8R+h6rYSUb3ekokRY6f/YukArN979jcW+V/S8g0eT/N3VN3kTqWbQ428m9/8k0P/1aIhF36PccEl6EhOcAUCrXKZXXWS3XKd2vc/TRBG9O5ELC17MmWubD2nKhUKZa26Ba2+D3P+4/MNCFwg59oWVeYhkzgN/JDR8deKBoD7Y+ljEjGZ0sosXVTvbc6RHirr2reNy1OXd6pJsQ+gqjk8VWFYmHrwBzW/n+uMPFiRwHB2I7ih8ciHFxIkd/3Omk5tCDV1t+2nNu5sxxpDFNx+huNhVT3/zMDz8usXC3ddaHBj1GHj/As08fwTS7Kt1HBTmyN29vdwAw+/wbwLVOJ3uAD1wi/dUH7Qei66PfyuRj4Ik9is+hglfbkbfR3cnZm7chlUWLdwmprtCohX4HUtlOcQjLYCu+fzGJH2QRKvP3UNz8bWk1qMxjGTOMThZ3kvgLI5AzFfo379UAAAAASUVORK5CYII='
   }
 
@@ -265,6 +266,69 @@ export default class CidChecker {
     return events.filter(event => event.event === 'labeled' && this.allocationLabels.includes(event.label?.name!)).length
   }
 
+  private async getIpFromMultiaddr (multiAddr: string): Promise<string[]> {
+    const m = new Multiaddr(Buffer.from(multiAddr, 'base64'))
+    const address = m.nodeAddress().address
+    const proto = m.protos()[0].name
+    switch (proto) {
+      case 'dns4':
+        return await resolve4(address)
+      case 'dns6':
+        return await resolve6(address)
+      case 'ip4':
+      case 'ip6':
+        return [address]
+      default:
+        throw new Error(`Unknown protocol ${proto}`)
+    }
+  }
+
+  private async getMinerInfo (miner: string): Promise<MinerInfo> {
+    return await retry(async () => {
+      this.logger.info({ miner }, 'Getting miner info')
+      const response = await axios.post('https://api.node.glif.io/rpc/v0', {
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'Filecoin.StateMinerInfo',
+        params: [
+          miner, null
+        ]
+      })
+      return response.data.result
+    })
+  }
+
+  private async getLocation (provider: string): Promise<Location | null> {
+    const minerInfo = await this.getMinerInfo(provider)
+    if (minerInfo.Multiaddrs == null || minerInfo.Multiaddrs.length === 0) {
+      return null
+    }
+    const ips: string[] = []
+    for (const multiAddr of minerInfo.Multiaddrs) {
+      this.logger.info({ multiAddr }, 'Getting IP from multiaddr')
+      const ip = await this.getIpFromMultiaddr(multiAddr)
+      ips.push(...ip)
+    }
+    for (const ip of ips) {
+      const data = await retry(async () => {
+        this.logger.info({ ip }, 'Getting location from IP')
+        const response = await axios.get(`https://ipinfo.io/${ip}?token=${this.ipinfoToken}`)
+        return response.data
+      }) as IpInfoResponse
+      if (data.bogon === true) {
+        continue
+      }
+      return {
+        city: data.city,
+        country: data.country,
+        region: data.region,
+        latitude: (data.loc != null) ? parseFloat(data.loc.split(',')[0]) : undefined,
+        longitude: (data.loc != null) ? parseFloat(data.loc.split(',')[1]) : undefined
+      }
+    }
+    return null
+  }
+
   public async check (event: IssuesLabeledEvent, criterias: Criteria[] = [{
     maxProviderDealPercentage: 0.25,
     maxDuplicationFactor: 1.25,
@@ -285,22 +349,26 @@ export default class CidChecker {
     }
     const criteria = criterias.length > allocations - 1 ? criterias[allocations - 1] : criterias[criterias.length - 1]
 
-    const [providerDistributions, replicationDistributions, cidSharing] = await Promise.all([
-      retry(async () => {
-        const result = await this.getStorageProviderDistribution(applicationInfo.clientAddress)
-        logger.info(result, 'Retrieved provider distribution')
-        return result
-      }, { retries: 3 }),
-      retry(async () => {
-        const result = await this.getReplicationDistribution(applicationInfo.clientAddress)
-        logger.info(result, 'Retrieved replication distribution')
-        return result
-      }, { retries: 3 }),
-      retry(async () => {
-        const result = await this.getCidSharing(applicationInfo.clientAddress)
-        logger.info(result, 'Retrieved cid sharing')
-        return result
-      }, { retries: 3 })
+    const [providerDistributions, replicationDistributions, cidSharing] = await Promise.all([(async () => {
+      const result = await retry(async () => await this.getStorageProviderDistribution(applicationInfo.clientAddress))
+      logger.info(result, 'Retrieved provider distribution')
+      const withLocations = []
+      for (const item of result) {
+        const location = await this.getLocation(item.provider)
+        withLocations.push({ ...item, ...location })
+      }
+      return withLocations
+    })(),
+    retry(async () => {
+      const result = await this.getReplicationDistribution(applicationInfo.clientAddress)
+      logger.info(result, 'Retrieved replication distribution')
+      return result
+    }),
+    retry(async () => {
+      const result = await this.getCidSharing(applicationInfo.clientAddress)
+      logger.info(result, 'Retrieved cid sharing')
+      return result
+    })
     ])
 
     const providerDistributionRows: ProviderDistributionRow[] = providerDistributions.map(distribution => {

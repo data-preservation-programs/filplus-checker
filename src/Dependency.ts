@@ -9,8 +9,9 @@ export function getCidChecker (logger: DeprecatedLogger): CidChecker {
     process.env.UPLOAD_REPO_NAME === undefined ||
     process.env.UPLOAD_REPO_COMMITTER_NAME === undefined ||
     process.env.UPLOAD_TOKEN === undefined ||
+    process.env.IPINFO_TOKEN === undefined ||
     process.env.UPLOAD_REPO_COMMITTER_EMAIL === undefined) {
-    throw new Error('UPLOAD_TOKEN, UPLOAD_REPO_OWNER, UPLOAD_REPO_NAME, UPLOAD_REPO_COMMITTER_NAME, UPLOAD_REPO_COMMITTER_EMAIL must be defined')
+    throw new Error('IPINFO_TOKEN, UPLOAD_TOKEN, UPLOAD_REPO_OWNER, UPLOAD_REPO_NAME, UPLOAD_REPO_COMMITTER_NAME, UPLOAD_REPO_COMMITTER_EMAIL must be defined')
   }
 
   const allocationLabels = process.env.ALLOCATION_LABELS?.split(',') ?? []
@@ -38,6 +39,7 @@ export function getCidChecker (logger: DeprecatedLogger): CidChecker {
     fileUploadConfig,
     process.env.FAKE_LINK === '1',
     logger,
+    process.env.IPINFO_TOKEN,
     allocationLabels
   )
 }

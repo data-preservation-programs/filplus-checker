@@ -18,14 +18,16 @@ For most of the datacap application, below restrictions should apply. GeoIP loca
 
 ⚠️ 50.00% of total deal sealed by [provider5](https://filfox.info/en/address/provider5) are duplicate data.
 
-| Provider                                              |              Location | Total Deals Sealed | Percentage | Unique Data | Duplication Factor (Total Deals / Unique Data) |
-| :---------------------------------------------------- | --------------------: | -----------------: | ---------: | ----------: | ---------------------------------------------: |
-| [provider0](https://filfox.info/en/address/provider0) |               Unknown |           400.00 B |     40.00% |    100.00 B |                                           4.00 |
-| [provider5](https://filfox.info/en/address/provider5) |           Beijing, CN |           200.00 B |     20.00% |    100.00 B |                                           2.00 |
-| [provider1](https://filfox.info/en/address/provider1) | San Francisco, CA, US |           100.00 B |     10.00% |    100.00 B |                                           1.00 |
-| [provider2](https://filfox.info/en/address/provider2) | San Francisco, CA, US |           100.00 B |     10.00% |    100.00 B |                                           1.00 |
-| [provider3](https://filfox.info/en/address/provider3) |      Portland, OR, US |           100.00 B |     10.00% |    100.00 B |                                           1.00 |
-| [provider4](https://filfox.info/en/address/provider4) |      New York, NY, US |           100.00 B |     10.00% |    100.00 B |                                           1.00 |
+⚠️ [provider5](https://filfox.info/en/address/provider5) has unknown IP location.
+
+| Provider                                              |           Location | Total Deals Sealed | Percentage | Unique Data | Duplication Factor (Total Deals / Unique Data) |
+| :---------------------------------------------------- | -----------------: | -----------------: | ---------: | ----------: | ---------------------------------------------: |
+| [provider0](https://filfox.info/en/address/provider0) |            Unknown |           400.00 B |     40.00% |    100.00 B |                                           4.00 |
+| [provider5](https://filfox.info/en/address/provider5) |            Unknown |           200.00 B |     20.00% |    100.00 B |                                           2.00 |
+| [provider1](https://filfox.info/en/address/provider1) | city1, region1, US |           100.00 B |     10.00% |    100.00 B |                                           1.00 |
+| [provider2](https://filfox.info/en/address/provider2) | city2, region2, US |           100.00 B |     10.00% |    100.00 B |                                           1.00 |
+| [provider3](https://filfox.info/en/address/provider3) | city3, region3, US |           100.00 B |     10.00% |    100.00 B |                                           1.00 |
+| [provider4](https://filfox.info/en/address/provider4) | city4, region4, US |           100.00 B |     10.00% |    100.00 B |                                           1.00 |
 
 ![Provider Distribution](./provider.png)
 ### Deal Data Replication
