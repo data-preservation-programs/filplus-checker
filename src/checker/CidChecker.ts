@@ -200,9 +200,7 @@ export default class CidChecker {
     }
 
     this.logger.info({ owner: params.owner, repo: params.repo, path: params.path, message: params.message }, 'Uploading file')
-    const response: Response = await retry(async () => await this.octokit.request('PUT /repos/{owner}/{repo}/contents/{path}', params), {
-      maxTimeout: 60000
-    })
+    const response: Response = await retry(async () => await this.octokit.request('PUT /repos/{owner}/{repo}/contents/{path}', params))
 
     this.logger.info({ owner: params.owner, repo: params.repo, path: params.path, message: params.message }, 'Uploaded file')
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -352,7 +350,7 @@ export default class CidChecker {
     const criteria = criterias.length > allocations - 1 ? criterias[allocations - 1] : criterias[criterias.length - 1]
 
     const [providerDistributions, replicationDistributions, cidSharing] = await Promise.all([(async () => {
-      const result = await retry(async () => await this.getStorageProviderDistribution(applicationInfo.clientAddress), { retries: 3 })
+      const result = await retry(async () => await this.getStorageProviderDistribution(applicationInfo.clientAddress))
       logger.info(result, 'Retrieved provider distribution')
       const withLocations = []
       for (const item of result) {
@@ -365,12 +363,12 @@ export default class CidChecker {
       const result = await this.getReplicationDistribution(applicationInfo.clientAddress)
       logger.info(result, 'Retrieved replication distribution')
       return result
-    }, { retries: 3 }),
+    }),
     retry(async () => {
       const result = await this.getCidSharing(applicationInfo.clientAddress)
       logger.info(result, 'Retrieved cid sharing')
       return result
-    }, { retries: 3 })
+    })
     ])
 
     const providerDistributionRows: ProviderDistributionRow[] = providerDistributions.map(distribution => {
