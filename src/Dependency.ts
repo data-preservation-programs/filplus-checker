@@ -25,7 +25,8 @@ export function getCidChecker (logger: DeprecatedLogger): CidChecker {
     branch: process.env.UPLOAD_REPO_BRANCH,
     committerName: process.env.UPLOAD_REPO_COMMITTER_NAME,
     committerEmail: process.env.UPLOAD_REPO_COMMITTER_EMAIL,
-    searchRepo: 'filecoin-project/filecoin-plus-large-datasets'
+    searchRepoLarge: 'filecoin-project/filecoin-plus-large-datasets',
+    searchRepo: 'filecoin-project/filecoin-plus-client-onboarding'
   }
 
   const octokit = new Octokit({

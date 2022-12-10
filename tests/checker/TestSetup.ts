@@ -64,6 +64,7 @@ export const fileUploadConfig: FileUploadConfig = {
   committerEmail: 'test-email',
   owner: 'test-owner',
   searchRepo: 'test-search-repo',
+  searchRepoLarge: 'test-search-repo-large',
 }
 
 let initialized = false;
