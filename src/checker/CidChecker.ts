@@ -13,6 +13,7 @@ import {
   MinerInfo, IpInfoResponse
 } from './Types'
 import { parseIssue } from '../../dep/filecoin-verifier-tools/utils/large-issue-parser'
+import { parseIssue as parseIssue2 } from '../../dep/filecoin-verifier-tools/utils/issue-parser'
 import { generateGfmTable, escape, generateLink, wrapInCode } from './MarkdownUtils'
 import xbytes from 'xbytes'
 import emoji from 'node-emoji'
@@ -31,6 +32,7 @@ export interface FileUploadConfig {
   branch?: string
   committerName: string
   committerEmail: string
+  searchRepoLarge: string
   searchRepo: string
 }
 
@@ -118,7 +120,7 @@ export default class CidChecker {
     private readonly allocationLabels: string[]) {
   }
 
-  private static getProjectNameFromTitle (titleStr: string): string {
+  private static getProjectNameFromTitleLarge (titleStr: string): string {
     let title = titleStr.replace(/\[DataCap\s*Application\]/i, '')
     const splitted = title.trim().split('-')
     if (splitted.length >= 2) {
@@ -131,16 +133,36 @@ export default class CidChecker {
     return title
   }
 
-  private static getApplicationInfo (issue: Issue): ApplicationInfo {
-    const parseResult = parseIssue(issue.body ?? '')
+  private static getProjectNameFromTitle (titleStr: string): string {
+    return titleStr.replace(/Client Allocation Request for:\s*/i, '')
+  }
+
+  private getApplicationInfo (issue: Issue): ApplicationInfo | null {
+    const parseResult = parseIssue2(issue.body ?? '')
     if (!parseResult.correct) {
-      throw new Error(`Invalid issue body.\n  errorMessage: ${parseResult.errorMessage}\n  errorDetails: ${parseResult.errorDetails}`)
+      this.logger.warn(`Invalid issue body.\n  errorMessage: ${parseResult.errorMessage}\n  errorDetails: ${parseResult.errorDetails}`)
+      return null
     }
 
     return {
       clientAddress: parseResult.address,
       organizationName: parseResult.name,
       projectName: CidChecker.getProjectNameFromTitle(issue.title),
+      url: issue.html_url
+    }
+  }
+
+  private getApplicationInfoLarge (issue: Issue): ApplicationInfo | null {
+    const parseResult = parseIssue(issue.body ?? '')
+    if (!parseResult.correct) {
+      this.logger.warn(`Invalid issue body.\n  errorMessage: ${parseResult.errorMessage}\n  errorDetails: ${parseResult.errorDetails}`)
+      return null
+    }
+
+    return {
+      clientAddress: parseResult.address,
+      organizationName: parseResult.name,
+      projectName: CidChecker.getProjectNameFromTitleLarge(issue.title),
       url: issue.html_url
     }
   }
@@ -218,16 +240,32 @@ export default class CidChecker {
   private async findIssueForClient (client: string): Promise<ApplicationInfo[]> {
     type Params = RestEndpointMethodTypes['search']['issuesAndPullRequests']['parameters']
     type Response = RestEndpointMethodTypes['search']['issuesAndPullRequests']['response']
-    const params: Params = {
-      q: `repo:${this.fileUploadConfig.searchRepo} is:issue ${encodeURIComponent(client)}`
+    let params: Params = {
+      q: `repo:${this.fileUploadConfig.searchRepoLarge} is:issue ${encodeURIComponent(client)}`
     }
-    const response: Response = await this.octokit.request('GET /search/issues', params)
+    let response: Response = await this.octokit.request('GET /search/issues', params)
 
     const result = []
     for (const item of response.data.items) {
       const issue = item as Issue
-      const info = CidChecker.getApplicationInfo(issue)
-      if (info.clientAddress === client) {
+      const info = this.getApplicationInfoLarge(issue)
+      if (info != null && info.clientAddress === client) {
+        result.push(info)
+      }
+    }
+
+    if (result.length > 0) {
+      return result
+    }
+
+    params = {
+      q: `repo:${this.fileUploadConfig.searchRepo} is:issue ${encodeURIComponent(client)}`
+    }
+    response = await this.octokit.request('GET /search/issues', params)
+    for (const item of response.data.items) {
+      const issue = item as Issue
+      const info = this.getApplicationInfo(issue)
+      if (info != null && info.clientAddress === client) {
         result.push(info)
       }
     }
@@ -279,7 +317,8 @@ export default class CidChecker {
       case 'ip6':
         return [address]
       default:
-        throw new Error(`Unknown protocol ${proto}`)
+        this.logger.error({ multiAddr }, 'Unknown protocol')
+        return []
     }
   }
 
@@ -338,7 +377,10 @@ export default class CidChecker {
     const { issue, repository } = event
     let logger = this.logger.child({ issueNumber: issue.number })
     logger.info({ label: event.label }, 'Checking issue')
-    const applicationInfo = CidChecker.getApplicationInfo(issue)
+    const applicationInfo = this.getApplicationInfoLarge(issue)
+    if (applicationInfo == null) {
+      throw new Error('Invalid issue')
+    }
     logger = logger.child({ clientAddress: applicationInfo.clientAddress })
     logger.info(applicationInfo, 'Retrieved application info')
     const allocations = await this.getNumberOfAllocations(issue, repository)

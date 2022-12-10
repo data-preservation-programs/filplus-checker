@@ -45,22 +45,29 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
     }
   });
 
-  describe('getProjectNameFromTitle', () => {
+  describe('getProjectNameFromTitleLarge', () => {
     it('should return the project name', async () => {
-      expect(CidChecker['getProjectNameFromTitle']('')).toEqual('');
-      expect(CidChecker['getProjectNameFromTitle']('[DataCap Application] <company>')).toEqual('company');
-      expect(CidChecker['getProjectNameFromTitle']('[DataCap Application] <company> - <project>')).toEqual('project');
-      expect(CidChecker['getProjectNameFromTitle']('[DataCap Application] <company> - <project>')).toEqual('project');
-      expect(CidChecker['getProjectNameFromTitle']('[DataCap Application] project')).toEqual('project');
-      expect(CidChecker['getProjectNameFromTitle']('[DataCap Application] company - project')).toEqual('project');
-      expect(CidChecker['getProjectNameFromTitle']('company - project')).toEqual('project');
-      expect(CidChecker['getProjectNameFromTitle']('project')).toEqual('project');
+      expect(CidChecker['getProjectNameFromTitleLarge']('')).toEqual('');
+      expect(CidChecker['getProjectNameFromTitleLarge']('[DataCap Application] <company>')).toEqual('company');
+      expect(CidChecker['getProjectNameFromTitleLarge']('[DataCap Application] <company> - <project>')).toEqual('project');
+      expect(CidChecker['getProjectNameFromTitleLarge']('[DataCap Application] <company> - <project>')).toEqual('project');
+      expect(CidChecker['getProjectNameFromTitleLarge']('[DataCap Application] project')).toEqual('project');
+      expect(CidChecker['getProjectNameFromTitleLarge']('[DataCap Application] company - project')).toEqual('project');
+      expect(CidChecker['getProjectNameFromTitleLarge']('company - project')).toEqual('project');
+      expect(CidChecker['getProjectNameFromTitleLarge']('project')).toEqual('project');
     })
   })
 
-  describe('getApplicationInfo', () => {
+  describe('getProjectNameFromTitle', () => {
+    it('should return the project name', async () => {
+      expect(CidChecker['getProjectNameFromTitle']('')).toEqual('');
+      expect(CidChecker['getProjectNameFromTitle']('Client Allocation Request for: company')).toEqual('company');
+    })
+  })
+
+  describe('getApplicationInfoLarge', () => {
     it('should return the client address', () => {
-      const info = CidChecker['getApplicationInfo'](issue)
+      const info = checker['getApplicationInfoLarge'](issue)
       expect(info).toEqual({
         clientAddress: 'f12345',
         organizationName: 'Some Company Inc',
