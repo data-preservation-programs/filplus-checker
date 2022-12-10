@@ -4,12 +4,31 @@ export interface ProviderDistribution {
   unique_data_size: string
   duplication_factor: number
   percentage: number
-  country: string | null
-  region: string | null
-  city: string | null
+}
+
+export interface Location {
+  city?: string
+  region?: string
+  country?: string
   latitude?: number
   longitude?: number
 }
+
+export interface IpInfoResponse {
+  city?: string
+  region?: string
+  country?: string
+  loc?: string
+  bogon?: boolean
+}
+
+export interface MinerInfo {
+  PeerId: string
+  Multiaddrs: string[] | null | undefined
+  SectorSize: number
+}
+
+export type ProviderDistributionWithLocation = ProviderDistribution & Location
 
 export interface ProviderDistributionRow {
   provider: string
