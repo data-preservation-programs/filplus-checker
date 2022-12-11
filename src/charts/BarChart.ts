@@ -6,19 +6,29 @@ const RED = 'rgba(255, 99, 132)'
 const GREEN = 'rgba(75, 192, 192)'
 
 export interface BarChartEntry {
-  yValue: number,
-  xValue: number,
-  barLabel: string,
+  yValue: number
+  xValue: number
+  barLabel: string
   label?: string
 }
 
+interface BarOptions {
+  magicNumber: number
+}
+
+// eslint-disable-next-line @typescript-eslint/no-extraneous-class
 export default class BarChart {
   static {
     Chart.defaults.font.weight = 'bold'
     Chart.defaults.font.size = 24
   }
 
-  public static getImage (entries: BarChartEntry[], width = 2000, height = 1000): string {
+  public static getImage (
+    entries: BarChartEntry[],
+    width = 2000,
+    height = 1000,
+    opts: BarOptions = { magicNumber: 2 }
+  ): string {
     const canvas = createCanvas(width, height)
     const ctx = canvas.getContext('2d')
 
@@ -28,34 +38,34 @@ export default class BarChart {
         labels: entries.map((entry) => entry.xValue),
         datasets: [{
           data: entries.map((entry) => ({ y: entry.yValue, x: entry.xValue, label: entry.barLabel })),
-          backgroundColor: entries.map(((row) => row.xValue <= 2 ? RED : GREEN)),
-          borderColor: entries.map(((row) => row.xValue <= 2 ? RED : GREEN)),
-          borderWidth: 1,
-        }],
+          backgroundColor: entries.map((row) => row.xValue <= opts.magicNumber ? RED : GREEN),
+          borderColor: entries.map((row) => row.xValue <= opts.magicNumber ? RED : GREEN),
+          borderWidth: 1
+        }]
       },
       options: {
         elements: {
           bar: {
             borderRadius: 10
-          },
+          }
         },
         plugins: {
           legend: {
             display: true,
             labels: {
-              generateLabels: ((_: Chart) => [
-                {text: 'low replica count', fillStyle: RED, strokeStyle: '#fff'},
-                {text: 'healthy replica count', fillStyle: GREEN, strokeStyle: '#fff'}
-              ])
+              generateLabels: (_: Chart) => [
+                { text: 'low replica count', fillStyle: RED, strokeStyle: '#fff' },
+                { text: 'healthy replica count', fillStyle: GREEN, strokeStyle: '#fff' }
+              ]
             }
           },
           title: {
             display: true,
             text: 'Deal Bytes by Number of Replicas'
           },
-          // @ts-ignore
+          // @ts-expect-error
           customCanvasBackgroundColor: {
-            color: '#fff',
+            color: '#fff'
           }
         },
         scales: {
@@ -73,13 +83,13 @@ export default class BarChart {
           x: {
             title: {
               display: true,
-              text: 'Number of Replicas',
+              text: 'Number of Replicas'
             },
             ticks: {
               count: 0
             }
-          },
-        },
+          }
+        }
       },
       plugins: [customCanvasBackgroundColor]
     })

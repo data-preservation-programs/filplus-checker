@@ -66,7 +66,7 @@ export default class GeoMap {
             color: 'rgba(0, 0, 255,0.5)',
             font: {
               size: 18,
-              weight: 'bold',
+              weight: 'bold'
             },
             padding: {
               bottom: 20
@@ -74,17 +74,17 @@ export default class GeoMap {
             formatter: (v: GeoMapEntry) => {
               return v.label
             }
-        }
+          }
         },
         scales: {
           xy: {
-            projection: 'naturalEarth1',
+            projection: 'naturalEarth1'
           },
           r: {
             type: 'sizeLogarithmic',
             range: [5, 20]
-          },
-        },
+          }
+        }
       }
     })
 
