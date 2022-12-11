@@ -12,12 +12,12 @@ const handler: ApplicationFunction = (app: Probot, _options: ApplicationFunction
     const criteria: Criteria[] = JSON.parse(process.env.CRITERIA ?? '[]')
     if (criteria.length === 0 || criteria.some(c =>
       c.lowReplicaThreshold === undefined ||
-      c.maxDuplicationFactor === undefined ||
+      c.maxDuplicationPercentage === undefined ||
       c.maxProviderDealPercentage === undefined ||
       c.maxPercentageForLowReplica === undefined)) {
       throw new Error('Invalid environment variable CRITERIA')
     }
-    const checker = getCidChecker(app.log)
+    const checker = getCidChecker(app.log.child({ contextId: context.id }))
     const result = await checker.check(context.payload, criteria)
     if (result === undefined) {
       app.log.info('No comment to post')
