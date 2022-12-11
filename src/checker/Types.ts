@@ -2,7 +2,7 @@ export interface ProviderDistribution {
   provider: string
   total_deal_size: string
   unique_data_size: string
-  duplication_factor: number
+  duplication_percentage: number
   percentage: number
 }
 
@@ -34,7 +34,7 @@ export interface ProviderDistributionRow {
   provider: string
   totalDealSize: string
   uniqueDataSize: string
-  duplicationFactor: string
+  duplicatePercentage: string
   percentage: string
   location: string
 }
@@ -63,13 +63,28 @@ export interface CidSharingRow {
   totalDealSize: string
   uniqueCidCount: string
   otherClientAddress: string
-  otherClientOrganizationNames: string
-  otherClientProjectNames: string
+  otherClientOrganizationName: string
+  verifier: string
 }
 
 export interface ApplicationInfo {
   organizationName: string
   clientAddress: string
-  projectName: string
+  verifier: string
   url: string
+}
+
+export interface GetVerifiedClientResponse {
+  count: number
+  data: Array<{
+    address: string
+    addressId: string
+    initialAllowance: string
+    orgName: string | null
+    name: string | null
+    verifierName: string
+    allowanceArray: Array<{
+      auditTrail: string
+    }>
+  }>
 }

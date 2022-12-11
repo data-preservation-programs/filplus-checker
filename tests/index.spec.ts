@@ -38,7 +38,7 @@ describe('checkerApp', () => {
     const mockChecker = jasmine.createSpyObj('CidChecker', { check: Promise.resolve('test-content') });
     spyOn(dependency, 'getCidChecker').and.returnValue(mockChecker)
     process.env.TARGET_LABEL = 'bot:readyToSign'
-    process.env.CRITERIA = '[{"lowReplicaThreshold": 1, "maxDuplicationFactor": 1, "maxProviderDealPercentage": 1, "maxPercentageForLowReplica": 1}]'
+    process.env.CRITERIA = '[{"lowReplicaThreshold": 1, "maxDuplicationPercentage": 1, "maxProviderDealPercentage": 1, "maxPercentageForLowReplica": 1}]'
     await probot.receive({id: '1', name: 'issues', payload: <any> event.payload});
 
     if (mock.pendingMocks().length > 0) {

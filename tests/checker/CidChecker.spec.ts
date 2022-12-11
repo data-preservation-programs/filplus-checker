@@ -16,7 +16,7 @@ describe('CidChecker', () => {
     await setupDatabase()
     checker = new CidChecker(testDatabase, new ProbotOctokit({ auth: {
        token: 'test-token'
-      }}), fileUploadConfig, false, logger, process.env.IPINFO_TOKEN!,['state:Granted', 'state:DataCapAllocated'])
+      }}), fileUploadConfig, logger, process.env.IPINFO_TOKEN!,['state:Granted', 'state:DataCapAllocated'])
     issue = <any>{
       html_url: 'test-url',
       id: 1,
@@ -45,35 +45,10 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
     }
   });
 
-  describe('getProjectNameFromTitleLarge', () => {
-    it('should return the project name', async () => {
-      expect(CidChecker['getProjectNameFromTitleLarge']('')).toEqual('');
-      expect(CidChecker['getProjectNameFromTitleLarge']('[DataCap Application] <company>')).toEqual('company');
-      expect(CidChecker['getProjectNameFromTitleLarge']('[DataCap Application] <company> - <project>')).toEqual('project');
-      expect(CidChecker['getProjectNameFromTitleLarge']('[DataCap Application] <company> - <project>')).toEqual('project');
-      expect(CidChecker['getProjectNameFromTitleLarge']('[DataCap Application] project')).toEqual('project');
-      expect(CidChecker['getProjectNameFromTitleLarge']('[DataCap Application] company - project')).toEqual('project');
-      expect(CidChecker['getProjectNameFromTitleLarge']('company - project')).toEqual('project');
-      expect(CidChecker['getProjectNameFromTitleLarge']('project')).toEqual('project');
-    })
-  })
-
-  describe('getProjectNameFromTitle', () => {
-    it('should return the project name', async () => {
-      expect(CidChecker['getProjectNameFromTitle']('')).toEqual('');
-      expect(CidChecker['getProjectNameFromTitle']('Client Allocation Request for: company')).toEqual('company');
-    })
-  })
-
   describe('getApplicationInfoLarge', () => {
     it('should return the client address', () => {
-      const info = checker['getApplicationInfoLarge'](issue)
-      expect(info).toEqual({
-        clientAddress: 'f12345',
-        organizationName: 'Some Company Inc',
-        projectName: 'My Project',
-        url: 'test-url'
-      })
+      const info = checker['getClientAddress'](issue)
+      expect(info).toEqual('f12345')
     })
   })
 
@@ -124,42 +99,42 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
           provider: 'provider0',
           total_deal_size: '400',
           percentage: 0.4,
-          duplication_factor: 4,
+          duplication_percentage: 0.75,
           unique_data_size: '100',
         },
         {
           provider: 'provider5',
           total_deal_size: '200',
           percentage: 0.2,
-          duplication_factor: 2,
+          duplication_percentage: 0.5,
           unique_data_size: '100',
         },
         {
           provider: 'provider1',
           total_deal_size: '100',
           percentage: 0.1,
-          duplication_factor: 1,
+          duplication_percentage: 0,
           unique_data_size: '100',
         },
         {
           provider: 'provider2',
           total_deal_size: '100',
           percentage: 0.1,
-          duplication_factor: 1,
+          duplication_percentage: 0,
           unique_data_size: '100',
         },
         {
           provider: 'provider3',
           total_deal_size: '100',
           percentage: 0.1,
-          duplication_factor: 1,
+          duplication_percentage: 0,
           unique_data_size: '100',
         },
         {
           provider: 'provider4',
           total_deal_size: '100',
           percentage: 0.1,
-          duplication_factor: 1,
+          duplication_percentage: 0,
           unique_data_size: '100',
         }
       ])
@@ -196,6 +171,54 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
     })
   })
 
+  describe('findApplicationInfoForClient', () => {
+    afterEach(() => {
+      nock.cleanAll();
+      nock.enableNetConnect();
+    });
+    beforeAll( () => {
+      nock.disableNetConnect();
+    })
+    it('should return the application info', async () => {
+      const mock1 = nock("https://api.filplus.d.interplanetary.one")
+        .get(_ => true)
+        .reply(200, {
+          "count":"2","data":[
+            {
+              "address": "address1",
+              "orgName": "Org Name",
+              "initialAllowance": "1000",
+              "verifierName": "LDN v3 multisig",
+              "allowanceArray": [{
+                "id": 1,
+                "auditTrail": "https://github.com/filecoin-project/filecoin-plus-large-datasets/issues/xxx"
+              }]
+            },
+            {
+              "address": "address1",
+              "orgName": "Org Name",
+              "initialAllowance": "2000",
+              "verifierName": "LDN v3 multisig",
+              "allowanceArray": [{
+                "id": 1,
+                "auditTrail": "https://github.com/filecoin-project/filecoin-plus-large-datasets/issues/xxx"
+              }]
+            }]
+        })
+      const applicationInfo = await checker['findApplicationInfoForClient']('address1')
+      expect(applicationInfo).toEqual({
+        clientAddress: 'address1',
+        verifier: 'LDN v3 multisig',
+        organizationName: 'Org Name',
+        url: 'https://github.com/filecoin-project/filecoin-plus-large-datasets/issues/xxx'
+      })
+      if (mock1.pendingMocks().length > 0) {
+        console.error(mock1.pendingMocks())
+      }
+      expect(mock1.isDone()).toBeTruthy();
+    })
+  })
+
   describe('check', () => {
     afterEach(() => {
       nock.cleanAll();
@@ -212,7 +235,7 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
       issue3.body = issue3.body.replace('f12345', 'fxxxx3')
       issue3.title = issue3.title.replace('My Project', 'My Project3')
 
-      const mock = nock("https://api.github.com")
+      const mock1 = nock("https://api.github.com")
         .get(uri => uri.includes("events"))
         .reply(200, [{event: 'labeled', label: { name: 'state:Granted'}}])
         .put(uri => uri.includes("/repos/test-owner/test-repo/contents"))
@@ -221,10 +244,25 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
         .reply(201, {content: { "download_url": "./replica.png" }})
         .put(uri => uri.includes("/repos/test-owner/test-repo/contents"))
         .reply(201, {content: { "download_url": "./report.md" }})
-        .get(uri => uri.includes("issue%20fxxxx3"))
-        .reply(200, {items: [issue3]})
-        .get(uri => uri.includes("issue%20fxxxx2"))
-        .reply(200, {items: [issue2]})
+      spyOn<any>(checker, 'findApplicationInfoForClient').and.returnValues(
+        Promise.resolve({
+          organizationName: 'org1',
+          clientAddress: 'f12345',
+          verifier: 'verifier1',
+          url: 'url1'
+        }),
+        Promise.resolve({
+          organizationName: 'org2',
+          clientAddress: 'fxxxx3',
+          verifier: 'verifier2',
+          url: 'url2'
+        }),
+        Promise.resolve({
+          organizationName: 'org3',
+          clientAddress: 'fxxxx2',
+          verifier: 'verifier3',
+          url: 'url3'
+        }))
       spyOn<any>(checker, 'getLocation').and.returnValues(
         Promise.resolve(null),
         Promise.resolve(null),
@@ -257,10 +295,10 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
           longitude: -77.4875
         }),)
       const report = await checker.check(event)
-      if (mock.pendingMocks().length > 0) {
-        console.error(mock.pendingMocks())
+      if (mock1.pendingMocks().length > 0) {
+        console.error(mock1.pendingMocks())
       }
-      expect(mock.isDone()).toBeTruthy();
+      expect(mock1.isDone()).toBeTruthy();
       //fs.writeFileSync('tests/fixtures/expected.md', report!)
       expect(report).toEqual(fs.readFileSync('tests/fixtures/expected.md', 'utf8'))
     })
