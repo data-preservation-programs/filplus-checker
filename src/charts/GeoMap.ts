@@ -4,7 +4,8 @@ import { GeometryCollection } from 'topojson-specification'
 import {
   BubbleMapController,
   ColorScale,
-  Feature, GeoFeature,
+  Feature,
+  GeoFeature,
   ProjectionScale,
   SizeLogarithmicScale,
   SizeScale
@@ -42,16 +43,16 @@ export default class GeoMap {
     const ctx = canvas.getContext('2d')
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     const chart = new Chart(ctx, <any>{
-      type: 'bubbleMap',
+      type: ChartGeo.BubbleMapController.id,
       data: {
         labels: entries.map(e => e.label),
         datasets: [{
           outline: GeoMap.countries,
           outlineBackgroundColor: '#BDBDBD',
           outlineBorderWidth: 0.3,
-          outlineBorderColor: 'rgba(0,0,0,1)',
+          outlineBorderColor: '#424242',
           showOutline: true,
-          backgroundColor: '#424242',
+          backgroundColor: 'rgba(0, 0, 255,0.5)',
           data: entries
         }]
       },
@@ -62,8 +63,10 @@ export default class GeoMap {
           },
           datalabels: {
             align: 'top',
+            color: 'rgba(0, 0, 255,0.5)',
             font: {
-              size: 18
+              size: 18,
+              weight: 'bold',
             },
             padding: {
               bottom: 20
@@ -71,17 +74,17 @@ export default class GeoMap {
             formatter: (v: GeoMapEntry) => {
               return v.label
             }
-          }
+        }
         },
         scales: {
           xy: {
-            projection: 'equirectangular'
+            projection: 'naturalEarth1',
           },
           r: {
             type: 'sizeLogarithmic',
             range: [5, 20]
-          }
-        }
+          },
+        },
       }
     })
 

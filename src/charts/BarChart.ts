@@ -1,48 +1,43 @@
 import { Chart } from 'chart.js'
 import { createCanvas } from 'canvas'
-import { ReplicationDistribution } from '../checker/Types'
-import xbytes from 'xbytes'
 import { customCanvasBackgroundColor } from './plugins'
 
 const RED = 'rgba(255, 99, 132)'
 const GREEN = 'rgba(75, 192, 192)'
 
+export interface BarChartEntry {
+  yValue: number,
+  xValue: number,
+  barLabel: string,
+  label?: string
+}
+
 export default class BarChart {
-  private config: any
-  public readonly data: any
-  public readonly options: any
-
-  constructor(data: ReplicationDistribution[], opts: any = {}) {
-    this.data = data
-    this.options = opts
-  }
-
-  public generateChartImage(): string {
-    this.generateConfig()
+  public static getImage (entries: BarChartEntry[], width = 2000, height = 1000): string {
+    Chart.defaults.font.weight = 'bold'
+    Chart.defaults.font.size = 24
 
     // Chartjs requires is requiring canvas.getContext('2d')
-    const canvas = createCanvas(800, 400)
+    const canvas = createCanvas(width, height)
     const ctx = canvas.getContext('2d')
 
-    const chart = new Chart(ctx, this.config)
-    return chart.toBase64Image().split(',')[1]
-  }
-
-  private generateConfig(): any {
-    this.config = {
+    const chart = new Chart(ctx, {
       type: 'bar',
       data: {
-        labels: this.data.map((d: ReplicationDistribution) => d.num_of_replicas),
+        labels: entries.map((entry) => entry.xValue),
         datasets: [{
-          data: this.data.map((d: ReplicationDistribution) => {
-            return { y: parseFloat(d.total_deal_size), x: d.num_of_replicas, label: xbytes(parseFloat(d.total_deal_size)) }
-          }),
-          backgroundColor: this.data.map(((row: ReplicationDistribution) => row.num_of_replicas <= 2 ? RED : GREEN)),
-          borderColor: this.data.map(((row: ReplicationDistribution) => row.num_of_replicas <= 2 ? RED : GREEN)),
+          data: entries.map((entry) => ({ y: entry.yValue, x: entry.xValue, label: entry.barLabel })),
+          backgroundColor: entries.map(((row) => row.xValue <= 2 ? RED : GREEN)),
+          borderColor: entries.map(((row) => row.xValue <= 2 ? RED : GREEN)),
           borderWidth: 1,
         }],
       },
       options: {
+        elements: {
+          bar: {
+            borderRadius: 10
+          },
+        },
         plugins: {
           legend: {
             display: true,
@@ -57,6 +52,7 @@ export default class BarChart {
             display: true,
             text: 'Deal Bytes by Number of Replicas'
           },
+          // @ts-ignore
           customCanvasBackgroundColor: {
             color: '#fff',
           }
@@ -76,7 +72,7 @@ export default class BarChart {
           x: {
             title: {
               display: true,
-              text: 'Number of Replicas'
+              text: 'Number of Replicas',
             },
             ticks: {
               count: 0
@@ -85,6 +81,7 @@ export default class BarChart {
         },
       },
       plugins: [customCanvasBackgroundColor]
-    }
+    })
+    return chart.toBase64Image().split(',')[1]
   }
 }

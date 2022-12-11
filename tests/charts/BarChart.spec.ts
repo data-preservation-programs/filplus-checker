@@ -1,37 +1,39 @@
-import BarChart from "../../src/charts/BarChart"
-import { ReplicationDistribution } from "../../src/checker/Types"
+import BarChart, { BarChartEntry } from "../../src/charts/BarChart"
 import * as fs from "fs"
+import xbytes from "xbytes"
 
 
 describe('BarChart', () => {
-  let barChart: BarChart
-  let data: ReplicationDistribution[]
+  let data: BarChartEntry[]
 
   beforeEach(() => {
     data = [
       {
-        "num_of_replicas": 1,
-        "total_deal_size": '100',
+        yValue: 100,
+        xValue: 1,
+        barLabel: xbytes(100)
+
       },
       {
-        "num_of_replicas": 2,
-        "total_deal_size": '200',
+        yValue: 200,
+        xValue: 2,
+        barLabel: xbytes(200)
       },
       {
-        "num_of_replicas": 4,
-        "total_deal_size": '500',
+        yValue: 500,
+        xValue: 3,
+        barLabel: xbytes(300)
       },
       {
-        "num_of_replicas": 6,
-        "total_deal_size": '1000',
+        yValue: 800,
+        xValue: 4,
+        barLabel: xbytes(400)
       }
-    ] as ReplicationDistribution[]
+    ] as BarChartEntry[]
   })
 
   it('should generate a chart image', async () => {
-    barChart = new BarChart(data)
-
-    const image = await barChart.generateChartImage()
+    const image = BarChart.getImage(data)
     fs.writeFileSync('tests/fixtures/barchart.png', image, 'base64')
     expect(fs.readFileSync('tests/fixtures/barchart.png', 'base64')).toEqual(image)
   })
