@@ -13,11 +13,12 @@ export interface BarChartEntry {
 }
 
 export default class BarChart {
-  public static getImage (entries: BarChartEntry[], width = 2000, height = 1000): string {
+  static {
     Chart.defaults.font.weight = 'bold'
     Chart.defaults.font.size = 24
+  }
 
-    // Chartjs requires is requiring canvas.getContext('2d')
+  public static getImage (entries: BarChartEntry[], width = 2000, height = 1000): string {
     const canvas = createCanvas(width, height)
     const ctx = canvas.getContext('2d')
 
