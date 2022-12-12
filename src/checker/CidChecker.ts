@@ -426,8 +426,7 @@ export default class CidChecker {
       `Upload replication distribution image for issue #${issue.number} of ${repository.full_name}`)
 
     const content: string[] = []
-    content.push('## DataCap and CID Checker Report')
-    content.push('To manually trigger this report, label this issue or add a comment with `checker:manualTrigger`')
+    content.push('## DataCap and CID Checker Report[^1]')
     content.push(` - Organization: ${wrapInCode(applicationInfo.organizationName)}`)
     content.push(` - Client: ${wrapInCode(applicationInfo.clientAddress)}`)
     content.push('### Storage Provider Distribution')
@@ -541,6 +540,7 @@ export default class CidChecker {
     }
 
     content.push('')
+    content.push('[^1]To manually trigger this report, add a comment with text `checker:manualTrigger`')
     const joinedContent = content.join('\n')
     const contentUrl = await this.uploadFile(
       `${repository.full_name}/issues/${issue.number}/${Date.now()}.md`,
