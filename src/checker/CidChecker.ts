@@ -494,7 +494,7 @@ export default class CidChecker {
         content.push('')
         content.push(`**Since this is the ${ordinal(allocations + 1)} allocation, the following restrictions have been relaxed:**`)
       }
-      content.push(`- At least ${(100 - criteria.maxPercentageForLowReplica * 100).toFixed(0)}% of unique data needs to be stored with at least ${criteria.lowReplicaThreshold} providers.`)
+      content.push(`- No more than ${(criteria.maxPercentageForLowReplica * 100).toFixed(0)}% of unique data are stored with less than ${criteria.lowReplicaThreshold + 1} providers.`)
     }
     content.push('')
     const lowReplicaPercentage = replicationDistributions

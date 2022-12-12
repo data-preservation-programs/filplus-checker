@@ -31,7 +31,7 @@ For most of the datacap application, below restrictions should apply.
 ![Provider Distribution](./provider.png)
 ### Deal Data Replication
 The below table shows how each many unique data are replicated across storage providers.
-- At least 75% of unique data needs to be stored with at least 3 providers.
+- No more than 25% of unique data are stored with less than 4 providers.
 
 ⚠️ 100.00% of deals are for data replicated across less than 4 storage providers.
 
