@@ -160,7 +160,7 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
     });
   })
 
-  xdescribe('getLocation', () => {
+  describe('getLocation', () => {
     it('should return the location', async () => {
       const location = await checker['getLocation']('f01974746')
       expect(location).toBeNull()

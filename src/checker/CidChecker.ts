@@ -29,8 +29,6 @@ import { Multiaddr } from 'multiaddr'
 import BarChart, { BarChartEntry } from '../charts/BarChart'
 import GeoMap, { GeoMapEntry } from '../charts/GeoMap'
 
-export type Logger = (message: string) => void
-
 export interface FileUploadConfig {
   owner: string
   repo: string
@@ -443,9 +441,8 @@ export default class CidChecker {
       )
     )
 
-    const replicationDistributionImage = this.getImageForReplicationDistribution(replicationDistributions)
     const providerDistributionImage = this.getImageForProviderDistribution(providerDistributions)
-
+    const replicationDistributionImage = this.getImageForReplicationDistribution(replicationDistributions)
     const providerDistributionImageUrl = await this.uploadFile(
       `${repository.full_name}/issues/${issue.number}/${Date.now()}.png`,
       providerDistributionImage,
