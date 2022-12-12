@@ -1,4 +1,4 @@
-import { Issue, IssuesLabeledEvent, Repository } from '@octokit/webhooks-types'
+import { Issue, IssuesLabeledEvent, Repository, IssueCommentCreatedEvent } from '@octokit/webhooks-types'
 import { Pool } from 'pg'
 import {
   ApplicationInfo,
@@ -333,7 +333,7 @@ export default class CidChecker {
     return null
   }
 
-  public async check (event: IssuesLabeledEvent, criterias: Criteria[] = [{
+  public async check (event: IssuesLabeledEvent | IssueCommentCreatedEvent, criterias: Criteria[] = [{
     maxProviderDealPercentage: 0.25,
     maxDuplicationPercentage: 0.20,
     maxPercentageForLowReplica: 0.25,
@@ -341,7 +341,7 @@ export default class CidChecker {
   }]): Promise<string | undefined> {
     const { issue, repository } = event
     let logger = this.logger.child({ issueNumber: issue.number })
-    logger.info({ label: event.label }, 'Checking issue')
+    logger.info('Checking issue')
     const address = this.getClientAddress(issue)
     const applicationInfo = await this.findApplicationInfoForClient(address)
     if (applicationInfo == null) {
@@ -427,6 +427,7 @@ export default class CidChecker {
 
     const content: string[] = []
     content.push('## DataCap and CID Checker Report')
+    content.push('To manually trigger this report, label this issue or add a comment with `checker:manualTrigger`')
     content.push(` - Organization: ${wrapInCode(applicationInfo.organizationName)}`)
     content.push(` - Client: ${wrapInCode(applicationInfo.clientAddress)}`)
     content.push('### Storage Provider Distribution')

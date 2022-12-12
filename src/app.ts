@@ -4,8 +4,14 @@ import { getCidChecker } from './Dependency'
 import { Criteria } from './checker/CidChecker'
 
 const handler: ApplicationFunction = (app: Probot, _options: ApplicationFunctionOptions): void => {
-  app.on(['issues.labeled'], async (context) => {
-    if (process.env.TARGET_LABEL !== context.payload.label?.name) {
+  app.on(['issues.labeled', 'issue_comment.created'], async (context) => {
+    if (context.payload.action === 'labeled') {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion,@typescript-eslint/no-non-null-asserted-optional-chain
+      if (!process.env.TARGET_LABEL!.split(',').includes(context.payload.label?.name!)) {
+        return
+      }
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    } else if (!context.payload.comment.body.includes(process.env.TARGET_COMMENT!)) {
       return
     }
 

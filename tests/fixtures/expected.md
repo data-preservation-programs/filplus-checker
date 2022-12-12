@@ -1,4 +1,5 @@
 ## DataCap and CID Checker Report
+To manually trigger this report, label this issue or add a comment with `checker:manualTrigger`
  - Organization: `org1`
  - Client: `f12345`
 ### Storage Provider Distribution
