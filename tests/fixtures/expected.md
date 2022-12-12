@@ -52,4 +52,4 @@ Usually different applications owns different data and should not resolve to the
 | [fxxxx3](https://filfox.info/en/address/fxxxx3) | [org2](url2) |             200.00 B |           2 | verifier2 |
 | [fxxxx2](https://filfox.info/en/address/fxxxx2) | [org3](url3) |             100.00 B |           1 | verifier3 |
 
-[^1]To manually trigger this report, add a comment with text `checker:manualTrigger`
+[^1]: To manually trigger this report, add a comment with text `checker:manualTrigger`
