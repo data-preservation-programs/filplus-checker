@@ -541,6 +541,7 @@ export default class CidChecker {
 
     content.push('')
     content.push('[^1]: To manually trigger this report, add a comment with text `checker:manualTrigger`')
+    content.push('')
     const joinedContent = content.join('\n')
     const contentUrl = await this.uploadFile(
       `${repository.full_name}/issues/${issue.number}/${Date.now()}.md`,
