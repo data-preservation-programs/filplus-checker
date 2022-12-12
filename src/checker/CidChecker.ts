@@ -264,8 +264,8 @@ export default class CidChecker {
   private static linkifyApplicationInfo (applicationInfo: ApplicationInfo | null): string {
     return applicationInfo != null
       ? (applicationInfo.url != null
-        ? `[${escape(applicationInfo.organizationName)}](${applicationInfo.url})`
-        : wrapInCode(applicationInfo.organizationName))
+          ? `[${escape(applicationInfo.organizationName)}](${applicationInfo.url})`
+          : wrapInCode(applicationInfo.organizationName))
       : 'Unknown'
   }
 
