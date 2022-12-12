@@ -43,6 +43,7 @@ export interface Criteria {
 }
 
 export default class CidChecker {
+  private static readonly issueApplicationInfoCache: Map<string, ApplicationInfo | null> = new Map()
   private static readonly ProviderDistributionQuery = `
       WITH miner_pieces AS (SELECT provider,
                                    piece_cid,
@@ -96,6 +97,7 @@ export default class CidChecker {
                          client_mapping
                     WHERE client_address = $1
                       AND current_state.client = client_mapping.client
+                      AND current_state.verified_deal = true
                       AND verified_deal = true)
       SELECT SUM(piece_size)                              AS total_deal_size,
              COUNT(DISTINCT current_state.piece_cid)::INT AS unique_cid_count,
@@ -133,35 +135,41 @@ export default class CidChecker {
 
   private async getStorageProviderDistribution (client: string): Promise<ProviderDistribution[]> {
     const currentEpoch = CidChecker.getCurrentEpoch()
-    const queryResult = await this.sql.query(
+    this.logger.info({ client, currentEpoch }, 'Getting storage provider distribution')
+    const queryResult = await retry(async () => await this.sql.query(
       CidChecker.ProviderDistributionQuery,
-      [client, currentEpoch])
+      [client, currentEpoch]))
     const distributions = queryResult.rows as ProviderDistribution[]
     const total = distributions.reduce((acc, cur) => acc + parseFloat(cur.total_deal_size), 0)
     for (const distribution of distributions) {
       distribution.percentage = parseFloat(distribution.total_deal_size) / total
     }
+    this.logger.debug({ distributions }, 'Got Storage provider distribution')
     return distributions
   }
 
   private async getReplicationDistribution (client: string): Promise<ReplicationDistribution[]> {
     const currentEpoch = CidChecker.getCurrentEpoch()
-    const queryResult = await this.sql.query(
+    this.logger.info({ client, currentEpoch }, 'Getting replication distribution')
+    const queryResult = await retry(async () => await this.sql.query(
       CidChecker.ReplicaDistributionQuery,
-      [client, currentEpoch])
+      [client, currentEpoch]))
     const distributions = queryResult.rows as ReplicationDistribution[]
     const total = distributions.reduce((acc, cur) => acc + parseFloat(cur.total_deal_size), 0)
     for (const distribution of distributions) {
       distribution.percentage = parseFloat(distribution.total_deal_size) / total
     }
+    this.logger.debug({ distributions }, 'Got replication distribution')
     return distributions
   }
 
   private async getCidSharing (client: string): Promise<CidSharing[]> {
-    const queryResult = await this.sql.query(
+    this.logger.info({ client }, 'Getting cid sharing')
+    const queryResult = await retry(async () => await this.sql.query(
       CidChecker.CidSharingQuery,
-      [client])
+      [client]))
     const sharing = queryResult.rows as CidSharing[]
+    this.logger.debug({ sharing }, 'Got cid sharing')
     return sharing
   }
 
@@ -198,25 +206,40 @@ export default class CidChecker {
   }
 
   private async findApplicationInfoForClient (client: string): Promise<ApplicationInfo | null> {
+    if (CidChecker.issueApplicationInfoCache.has(client)) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      return CidChecker.issueApplicationInfoCache.get(client)!
+    }
     this.logger.info({ client }, 'Finding application info for client')
     const response = await retry(async () => await axios.get(
       `https://api.filplus.d.interplanetary.one/api/getVerifiedClients?limit=10&page=1&filter=${client}`))
     const data: GetVerifiedClientResponse = response.data
     if (data.data.length === 0) {
+      CidChecker.issueApplicationInfoCache.set(client, null)
       return null
     }
     const primary = data.data.reduce((prev, curr) => parseInt(prev.initialAllowance) > parseInt(curr.initialAllowance) ? prev : curr)
-    return {
+    const result = {
       clientAddress: client,
       organizationName: (primary.name ?? '') + (primary.orgName ?? ''),
       url: primary.allowanceArray[0]?.auditTrail,
       verifier: primary.verifierName
     }
+    CidChecker.issueApplicationInfoCache.set(client, result)
+    return result
   }
 
   private static linkifyAddress (address: string): string {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     return `[${address.match(/.{1,41}/g)!.join('<br/>')}](https://filfox.info/en/address/${address})`
+  }
+
+  private static linkifyApplicationInfo (applicationInfo: ApplicationInfo | null): string {
+    return applicationInfo != null
+      ? (applicationInfo.url != null
+        ? `[${escape(applicationInfo.organizationName)}](${applicationInfo.url})`
+        : wrapInCode(applicationInfo.organizationName))
+      : 'Unknown'
   }
 
   private async getNumberOfAllocations (issue: Issue, repo: Repository): Promise<number> {
@@ -290,7 +313,7 @@ export default class CidChecker {
       ips.push(...ip)
     }
     for (const ip of ips) {
-      this.logger.info({ ip }, 'Getting location from IP')
+      this.logger.info({ ip }, 'Getting location for IP')
       const data = await retry(async () => {
         const response = await axios.get(`https://ipinfo.io/${ip}?token=${this.ipinfoToken}`)
         return response.data
@@ -298,6 +321,7 @@ export default class CidChecker {
       if (data.bogon === true) {
         continue
       }
+      this.logger.info({ ip, data }, 'Got location for IP')
       return {
         city: data.city,
         country: data.country,
@@ -334,8 +358,7 @@ export default class CidChecker {
     const criteria = criterias.length > allocations - 1 ? criterias[allocations - 1] : criterias[criterias.length - 1]
 
     const [providerDistributions, replicationDistributions, cidSharing] = await Promise.all([(async () => {
-      const result = await retry(async () => await this.getStorageProviderDistribution(applicationInfo.clientAddress))
-      logger.info(result, 'Retrieved provider distribution')
+      const result = await this.getStorageProviderDistribution(applicationInfo.clientAddress)
       const withLocations = []
       for (const item of result) {
         const location = await this.getLocation(item.provider)
@@ -343,16 +366,8 @@ export default class CidChecker {
       }
       return withLocations
     })(),
-    retry(async () => {
-      const result = await this.getReplicationDistribution(applicationInfo.clientAddress)
-      logger.info(result, 'Retrieved replication distribution')
-      return result
-    }),
-    retry(async () => {
-      const result = await this.getCidSharing(applicationInfo.clientAddress)
-      logger.info(result, 'Retrieved cid sharing')
-      return result
-    })
+    this.getReplicationDistribution(applicationInfo.clientAddress),
+    this.getCidSharing(applicationInfo.clientAddress)
     ])
 
     const providerDistributionRows: ProviderDistributionRow[] = providerDistributions.map(distribution => {
@@ -392,11 +407,7 @@ export default class CidChecker {
             otherClientAddress: CidChecker.linkifyAddress(share.other_client_address),
             totalDealSize,
             uniqueCidCount: share.unique_cid_count.toLocaleString('en-US'),
-            otherClientOrganizationName: otherApplication != null
-              ? (otherApplication.url != null
-                  ? `[${escape(otherApplication.organizationName)}](${otherApplication.url})`
-                  : wrapInCode(otherApplication.organizationName))
-              : 'Unknown',
+            otherClientOrganizationName: CidChecker.linkifyApplicationInfo(otherApplication),
             verifier: otherApplication?.verifier ?? 'Unknown'
           }
         }
