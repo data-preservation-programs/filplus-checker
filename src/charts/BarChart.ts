@@ -66,7 +66,7 @@ export default class BarChart {
             color: '#fff'
           },
           datalabels: {
-            offset: 10,
+            offset: 5,
             font: {
               size: 20,
               weight: 800
