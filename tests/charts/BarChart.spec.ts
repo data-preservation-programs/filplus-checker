@@ -33,7 +33,7 @@ describe('BarChart', () => {
     ] as BarChartEntry[]
   })
 
-  it('should generate a chart image', async () => {
+  xit('should generate a chart image', async () => {
     const image = BarChart.getImage(data, {
       title: 'Bar Chart',
       titleXText: 'X Axis',
