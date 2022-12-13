@@ -16,7 +16,7 @@ describe('CidChecker', () => {
     await setupDatabase()
     checker = new CidChecker(testDatabase, new ProbotOctokit({ auth: {
        token: 'test-token'
-      }}), fileUploadConfig, logger, process.env.IPINFO_TOKEN!,['state:Granted', 'state:DataCapAllocated'])
+      }}), fileUploadConfig, logger, process.env.IPINFO_TOKEN ?? '',['state:Granted', 'state:DataCapAllocated'])
     issue = <any>{
       html_url: 'test-url',
       id: 1,

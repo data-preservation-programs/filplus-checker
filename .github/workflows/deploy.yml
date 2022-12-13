@@ -14,11 +14,21 @@ jobs:
           node-version: 16
       - run: npm ci
       - run: npm run release
-      - name: deploy
+      - name: upload to S3
+        uses: hkusu/s3-upload-action@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: 'us-west-2'
+          aws-bucket: 'filplus-checker-artifacts'
+          file-path: 'dist/index.zip'
+          destination-dir: '/'
+      - name: deploy to lambda
         uses: appleboy/lambda-action@master
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: ${{ secrets.AWS_REGION }}
           function_name: filplus-checker
-          zip_file: dist/index.zip
+          s3_bucket: filplus-checker-artifacts
+          s3_key: artifacts/index.zip
