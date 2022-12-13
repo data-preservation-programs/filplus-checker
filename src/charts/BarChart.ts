@@ -1,10 +1,8 @@
-import { Chart } from 'chart.js'
+import { Chart, LegendOptions } from 'chart.js'
 import { createCanvas } from 'canvas'
 import { customCanvasBackgroundColor } from './plugins'
 
-const RED = 'rgba(255, 99, 132)'
-const GREEN = 'rgba(75, 192, 192)'
-
+type Color = string
 export interface BarChartEntry {
   yValue: number
   xValue: number
@@ -13,7 +11,15 @@ export interface BarChartEntry {
 }
 
 interface BarOptions {
-  magicNumber: number
+  title: string
+  titleYText: string
+  titleXText: string
+  legendOpts?: Partial<LegendOptions<'bar'>>
+  backgroundColors?: Color[]
+  borderColors?: Color[]
+  colorThreshold?: number
+  width?: number
+  height?: number
 }
 
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class
@@ -25,11 +31,9 @@ export default class BarChart {
 
   public static getImage (
     entries: BarChartEntry[],
-    width = 2000,
-    height = 1000,
-    opts: BarOptions = { magicNumber: 2 }
+    opts: BarOptions
   ): string {
-    const canvas = createCanvas(width, height)
+    const canvas = createCanvas(opts?.width ?? 2000, opts?.height ?? 1000)
     const ctx = canvas.getContext('2d')
 
     const chart = new Chart(ctx, {
@@ -38,8 +42,8 @@ export default class BarChart {
         labels: entries.map((entry) => entry.xValue),
         datasets: [{
           data: entries.map((entry) => ({ y: entry.yValue, x: entry.xValue, label: entry.barLabel })),
-          backgroundColor: entries.map((row) => row.xValue <= opts.magicNumber ? RED : GREEN),
-          borderColor: entries.map((row) => row.xValue <= opts.magicNumber ? RED : GREEN),
+          backgroundColor: opts.backgroundColors,
+          borderColor: opts.borderColors,
           borderWidth: 1
         }]
       },
@@ -50,18 +54,10 @@ export default class BarChart {
           }
         },
         plugins: {
-          legend: {
-            display: true,
-            labels: {
-              generateLabels: (_: Chart) => [
-                { text: 'low replica count', fillStyle: RED, strokeStyle: '#fff' },
-                { text: 'healthy replica count', fillStyle: GREEN, strokeStyle: '#fff' }
-              ]
-            }
-          },
+          legend: opts.legendOpts,
           title: {
             display: true,
-            text: 'Deal Bytes by Number of Replicas'
+            text: opts.title
           },
           // @ts-expect-error
           customCanvasBackgroundColor: {
@@ -72,7 +68,7 @@ export default class BarChart {
           y: {
             title: {
               display: true,
-              text: 'Total Deal Size'
+              text: opts.titleYText
             },
             beginAtZero: true,
             ticks: {
@@ -83,7 +79,7 @@ export default class BarChart {
           x: {
             title: {
               display: true,
-              text: 'Number of Replicas'
+              text: opts.titleXText
             },
             ticks: {
               count: 0

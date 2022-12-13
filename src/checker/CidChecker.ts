@@ -28,7 +28,10 @@ import axios from 'axios'
 import { Multiaddr } from 'multiaddr'
 import BarChart, { BarChartEntry } from '../charts/BarChart'
 import GeoMap, { GeoMapEntry } from '../charts/GeoMap'
+import { Chart, LegendOptions } from 'chart.js'
 
+const RED = 'rgba(255, 99, 132)'
+const GREEN = 'rgba(75, 192, 192)'
 export interface FileUploadConfig {
   owner: string
   repo: string
@@ -207,13 +210,37 @@ export default class CidChecker {
     for (const distribution of replicationDistributions) {
       replicationEntries.push({
         yValue: distribution.num_of_replicas,
-        xValue: parseFloat(distribution.total_deal_size),
-        barLabel: xbytes(parseFloat(distribution.total_deal_size)),
+        xValue: parseFloat(distribution.unique_data_size),
+        barLabel: xbytes(parseFloat(distribution.unique_data_size)),
         label: distribution.num_of_replicas.toString()
       })
     }
 
-    return BarChart.getImage(replicationEntries)
+    const backgroundColors = replicationEntries.map((row) => row.xValue <= 2 ? RED : GREEN)
+    const borderColors = replicationEntries.map((row) => row.xValue <= 2 ? RED : GREEN)
+
+    // not sure why typescript is complaining here on labels
+    // ive nested the Partial as well and its still complaining
+    // leaving labels as any for now.
+    const legendOpts: Partial<LegendOptions<'bar'> & { labels: any }> = {
+      display: true,
+      labels: {
+        generateLabels: (_: Chart<'bar'>) => [
+          { text: 'low provider count', fillStyle: RED, strokeStyle: '#fff' },
+          { text: 'healthy provider count', fillStyle: GREEN, strokeStyle: '#fff' }
+        ]
+      }
+    }
+
+    return BarChart.getImage(replicationEntries, {
+      title: 'Deal Bytes by Number of Providers',
+      titleYText: 'Total Deal Size',
+      titleXText: 'Number of Providers',
+      colorThreshold: 2,
+      legendOpts,
+      backgroundColors,
+      borderColors
+    })
   }
 
   private getImageForProviderDistribution (providerDistributions: ProviderDistributionWithLocation[]): string {
