@@ -22,3 +22,5 @@ jobs:
           aws_region: ${{ secrets.AWS_REGION }}
           function_name: filplus-checker
           zip_file: dist/index.zip
+          s3_bucket: filplus-checker-artifacts
+          s3_key: index.zip
