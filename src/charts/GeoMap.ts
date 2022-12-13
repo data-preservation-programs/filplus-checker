@@ -78,7 +78,7 @@ export default class GeoMap {
         },
         scales: {
           xy: {
-            projection: 'naturalEarth1'
+            projection: 'equirectangular'
           },
           r: {
             type: 'sizeLogarithmic',

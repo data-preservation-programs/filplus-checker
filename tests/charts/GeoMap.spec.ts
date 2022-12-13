@@ -31,7 +31,7 @@ describe('GeoMap', () => {
     ]
 
     const image = GeoMap.getImage(data)
-    // fs.writeFileSync('tests/fixtures/geomap.png', image, 'base64')
+    fs.writeFileSync('tests/fixtures/geomap.png', image, 'base64')
     expect(fs.readFileSync('tests/fixtures/geomap.png', 'base64')).toEqual(image)
   })
 })

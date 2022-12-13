@@ -62,7 +62,7 @@ describe('BarChart', () => {
         }
       } as any
     })
-    // fs.writeFileSync('tests/fixtures/barchart.png', image, 'base64')
+    fs.writeFileSync('tests/fixtures/barchart.png', image, 'base64')
     expect(fs.readFileSync('tests/fixtures/barchart.png', 'base64')).toEqual(image)
   })
 })
