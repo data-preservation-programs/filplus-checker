@@ -9,7 +9,7 @@
     "start": "probot run ./dist/src/app.js",
     "lint": "eslint --ext ts --fix src/",
     "lint:nofix": "eslint --ext ts src/",
-    "release": "rm -rf dist && npm run build && cp package*.json dist && cd dist && npm ci --omit=dev && find . -name 'lib*.so*' | xargs strip && zip -r index.zip ."
+    "release": "rm -rf dist && npm run build && cp package*.json dist && cd dist && npm ci --omit=dev && strip ./node_modules/canvas/build/Release/librsvg-2.so.2 && rm -rf ./node_modules/chart.js/dist/docs && zip -r index.zip ."
   },
   "repository": {
     "type": "git",
