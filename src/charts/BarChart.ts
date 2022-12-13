@@ -1,6 +1,7 @@
 import { Chart, LegendOptions } from 'chart.js'
 import { createCanvas } from 'canvas'
 import { customCanvasBackgroundColor } from './plugins'
+import ChartDataLabels from 'chartjs-plugin-datalabels'
 
 type Color = string
 export interface BarChartEntry {
@@ -27,6 +28,7 @@ export default class BarChart {
   static {
     Chart.defaults.font.weight = 'bold'
     Chart.defaults.font.size = 24
+    Chart.register(ChartDataLabels)
   }
 
   public static getImage (
@@ -62,6 +64,18 @@ export default class BarChart {
           // @ts-expect-error
           customCanvasBackgroundColor: {
             color: '#fff'
+          },
+          datalabels: {
+            offset: 10,
+            font: {
+              size: 20,
+              weight: 800
+            },
+            align: 'end',
+            formatter: (_, context) => {
+              const data: any = context.dataset.data[context.dataIndex]
+              return data.label
+            }
           }
         },
         scales: {
