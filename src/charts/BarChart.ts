@@ -2,6 +2,7 @@ import { Chart, LegendOptions } from 'chart.js'
 import { createCanvas } from 'canvas'
 import { customCanvasBackgroundColor } from './plugins'
 import ChartDataLabels from 'chartjs-plugin-datalabels'
+import xbytes from 'xbytes'
 
 type Color = string
 export interface BarChartEntry {
@@ -67,11 +68,13 @@ export default class BarChart {
           },
           datalabels: {
             offset: 5,
+            anchor: 'end',
+            align: 'top',
+            clamp: true,
             font: {
               size: 20,
               weight: 800
             },
-            align: 'end',
             formatter: (_, context) => {
               const data: any = context.dataset.data[context.dataIndex]
               return data.label
@@ -84,10 +87,14 @@ export default class BarChart {
               display: true,
               text: opts.titleYText
             },
-            beginAtZero: true,
+            suggestedMax: Math.max.apply(null, entries.map((e) => e.yValue)) * 1.02,
             ticks: {
+              maxRotation: 45,
+              minRotation: 45,
               count: 6,
-              precision: 2
+              callback: (tickValue: number | string) => {
+                return xbytes(tickValue as number, { iec: true, fixed: 0 })
+              }
             }
           },
           x: {

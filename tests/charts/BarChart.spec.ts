@@ -10,13 +10,13 @@ describe('BarChart', () => {
   beforeEach(() => {
     data = [
       {
-        yValue: 20,
+        yValue: 200,
         xValue: 1,
-        barLabel: xbytes(20)
+        barLabel: xbytes(200)
 
       },
       {
-        yValue: 200,
+        yValue: 900,
         xValue: 2,
         barLabel: xbytes(200)
       },
