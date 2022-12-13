@@ -211,7 +211,7 @@ export default class CidChecker {
       replicationEntries.push({
         yValue: parseFloat(distribution.unique_data_size),
         xValue: distribution.num_of_replicas,
-        barLabel: xbytes(parseFloat(distribution.unique_data_size)),
+        barLabel: xbytes(parseFloat(distribution.unique_data_size), { iec: true }),
         label: distribution.num_of_replicas.toString()
       })
     }
@@ -233,8 +233,8 @@ export default class CidChecker {
     }
 
     return BarChart.getImage(replicationEntries, {
-      title: 'Deal Bytes by Number of Providers',
-      titleYText: 'Total Deal Size',
+      title: 'Unique Data Bytes by Number of Providers',
+      titleYText: 'Unique Data Bytes',
       titleXText: 'Number of Providers',
       colorThreshold: 2,
       legendOpts,
