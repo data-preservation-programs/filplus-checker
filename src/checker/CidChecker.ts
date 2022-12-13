@@ -396,6 +396,12 @@ export default class CidChecker {
     const { issue, repository } = event
     let logger = this.logger.child({ issueNumber: issue.number })
     logger.info('Checking issue')
+    const allocations = await this.getNumberOfAllocations(issue, repository)
+    const isEarlyAllocation = criterias.length > allocations
+    logger.info({ allocations }, 'Retrieved number of previous allocations')
+    if (allocations === 0) {
+      return undefined
+    }
     const address = this.getClientAddress(issue)
     const applicationInfo = await this.findApplicationInfoForClient(address)
     if (applicationInfo == null) {
@@ -403,12 +409,6 @@ export default class CidChecker {
     }
     logger = logger.child({ clientAddress: applicationInfo.clientAddress })
     logger.info(applicationInfo, 'Retrieved application info')
-    const allocations = await this.getNumberOfAllocations(issue, repository)
-    const isEarlyAllocation = criterias.length > allocations
-    logger.info({ allocations }, 'Retrieved number of previous allocations')
-    if (allocations === 0) {
-      return undefined
-    }
     const criteria = criterias.length > allocations - 1 ? criterias[allocations - 1] : criterias[criterias.length - 1]
 
     const [providerDistributions, replicationDistributions, cidSharing] = await Promise.all([(async () => {
