@@ -1,5 +1,5 @@
 import * as fs from "fs";
-import GeoMap, {GeoMapEntry} from "../../src/charts/GeoMap";
+import GeoMap, {GeoMapEntry} from "../../src/charts/GeoMap"
 
 describe('GeoMap', () => {
   it('should generate a chart image', async () => {
@@ -31,7 +31,7 @@ describe('GeoMap', () => {
     ]
 
     const image = GeoMap.getImage(data)
-    fs.writeFileSync('tests/fixtures/geomap.png', image, 'base64')
+    // fs.writeFileSync('tests/fixtures/geomap.png', image, 'base64')
     expect(fs.readFileSync('tests/fixtures/geomap.png', 'base64')).toEqual(image)
   })
 })
