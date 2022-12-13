@@ -209,8 +209,8 @@ export default class CidChecker {
 
     for (const distribution of replicationDistributions) {
       replicationEntries.push({
-        yValue: distribution.num_of_replicas,
-        xValue: parseFloat(distribution.unique_data_size),
+        yValue: parseFloat(distribution.unique_data_size),
+        xValue: distribution.num_of_replicas,
         barLabel: xbytes(parseFloat(distribution.unique_data_size)),
         label: distribution.num_of_replicas.toString()
       })
