@@ -1,4 +1,4 @@
-import { Issue, IssuesLabeledEvent, Repository, IssueCommentCreatedEvent } from '@octokit/webhooks-types'
+import { Issue, Repository } from '@octokit/webhooks-types'
 import { Pool } from 'pg'
 import {
   ApplicationInfo,
@@ -120,7 +120,7 @@ export default class CidChecker {
 
   public constructor (
     private readonly sql: Pool,
-    private readonly octokit: Octokit,
+    public readonly octokit: Octokit,
     private readonly fileUploadConfig: FileUploadConfig,
     private readonly logger: Logger,
     private readonly ipinfoToken: string,
@@ -387,7 +387,7 @@ export default class CidChecker {
     return null
   }
 
-  public async check (event: IssuesLabeledEvent | IssueCommentCreatedEvent, criterias: Criteria[] = [{
+  public async check (event: { issue: Issue, repository: Repository }, criterias: Criteria[] = [{
     maxProviderDealPercentage: 0.25,
     maxDuplicationPercentage: 0.20,
     maxPercentageForLowReplica: 0.25,
