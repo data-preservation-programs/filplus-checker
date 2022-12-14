@@ -87,7 +87,7 @@ export default class BarChart {
               display: true,
               text: opts.titleYText
             },
-            suggestedMax: Math.max.apply(null, entries.map((e) => e.yValue)) * 1.02,
+            suggestedMax: Math.max.apply(null, entries.map((e) => e.yValue)) * 1.05,
             ticks: {
               maxRotation: 45,
               minRotation: 45,
