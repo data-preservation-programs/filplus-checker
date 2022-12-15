@@ -28,7 +28,7 @@ import { Multiaddr } from 'multiaddr'
 import BarChart, { BarChartEntry } from '../charts/BarChart'
 import GeoMap, { GeoMapEntry } from '../charts/GeoMap'
 import { Chart, LegendOptions } from 'chart.js'
-import { matchGroupLargeNotary } from '../../dist/dep/filecoin-verifier-tools/utils/common-utils'
+import { matchGroupLargeNotary } from '../../dep/filecoin-verifier-tools/utils/common-utils'
 
 const RED = 'rgba(255, 99, 132)'
 const GREEN = 'rgba(75, 192, 192)'
