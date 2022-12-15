@@ -2,7 +2,7 @@ import * as fs from "fs";
 import GeoMap, {GeoMapEntry} from "../../src/charts/GeoMap"
 
 describe('GeoMap', () => {
-  xit('should generate a chart image', async () => {
+  it('should generate a chart image', async () => {
     const data: GeoMapEntry[] = [
       {
         label: 'f01000',
@@ -31,7 +31,7 @@ describe('GeoMap', () => {
     ]
 
     const image = GeoMap.getImage(data)
-    //fs.writeFileSync('tests/fixtures/geomap.png', image, 'base64')
+    fs.writeFileSync('tests/fixtures/geomap.png', image, 'base64')
     expect(fs.readFileSync('tests/fixtures/geomap.png', 'base64')).toEqual(image)
   })
 })

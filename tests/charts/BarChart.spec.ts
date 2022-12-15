@@ -33,7 +33,7 @@ describe('BarChart', () => {
     ] as BarChartEntry[]
   })
 
-  xit('should generate a chart image', async () => {
+  it('should generate a chart image', async () => {
     const image = BarChart.getImage(data, {
       title: 'Bar Chart',
       titleXText: 'X Axis',
@@ -62,7 +62,7 @@ describe('BarChart', () => {
         }
       } as any
     })
-    // fs.writeFileSync('tests/fixtures/barchart.png', image, 'base64')
+    fs.writeFileSync('tests/fixtures/barchart.png', image, 'base64')
     expect(fs.readFileSync('tests/fixtures/barchart.png', 'base64')).toEqual(image)
   })
 })

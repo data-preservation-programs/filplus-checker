@@ -3,6 +3,9 @@
  - Client: `f12345`
 ### Storage Provider Distribution
 The below table shows the distribution of storage providers that have stored data for this client.
+
+If this is the first time a provider takes verified deal, it will be marked as `new`.
+
 For most of the datacap application, below restrictions should apply.
  - Storage provider should not exceed 25% of total datacap.
  - Storage provider should not be storing duplicate data for more than 20%.
@@ -21,12 +24,12 @@ For most of the datacap application, below restrictions should apply.
 
 | Provider                                                    |           Location | Total Deals Sealed | Percentage | Unique Data | Duplicate Deals |
 | :---------------------------------------------------------- | -----------------: | -----------------: | ---------: | ----------: | --------------: |
-| `new` [provider0](https://filfox.info/en/address/provider0) |            Unknown |           400.00 B |     40.00% |    100.00 B |          75.00% |
-| `new` [provider5](https://filfox.info/en/address/provider5) |            Unknown |           200.00 B |     20.00% |    100.00 B |          50.00% |
-| `new` [provider1](https://filfox.info/en/address/provider1) | city1, region1, US |           100.00 B |     10.00% |    100.00 B |           0.00% |
-| `new` [provider2](https://filfox.info/en/address/provider2) | city2, region2, US |           100.00 B |     10.00% |    100.00 B |           0.00% |
-| `new` [provider3](https://filfox.info/en/address/provider3) | city3, region3, US |           100.00 B |     10.00% |    100.00 B |           0.00% |
-| `new` [provider4](https://filfox.info/en/address/provider4) | city4, region4, US |           100.00 B |     10.00% |    100.00 B |           0.00% |
+| [provider0](https://filfox.info/en/address/provider0)`new`  |            Unknown |           400.00 B |     40.00% |    100.00 B |          75.00% |
+| [provider5](https://filfox.info/en/address/provider5)`new`  |            Unknown |           200.00 B |     20.00% |    100.00 B |          50.00% |
+| [provider1](https://filfox.info/en/address/provider1)`new`  | city1, region1, US |           100.00 B |     10.00% |    100.00 B |           0.00% |
+| [provider2](https://filfox.info/en/address/provider2)`new`  | city2, region2, US |           100.00 B |     10.00% |    100.00 B |           0.00% |
+| [provider3](https://filfox.info/en/address/provider3)`new`  | city3, region3, US |           100.00 B |     10.00% |    100.00 B |           0.00% |
+| [provider4](https://filfox.info/en/address/provider4)`new`  | city4, region4, US |           100.00 B |     10.00% |    100.00 B |           0.00% |
 
 ![Provider Distribution](./provider.png)
 ### Deal Data Replication

@@ -142,14 +142,14 @@ export default class CidChecker {
 
   private async getFirstClientByProviders (providers: string[]): Promise<Map<string, string>> {
     const params = []
-    for (let i = 1; i <= providers.length; i ++) {
-      params.push('$' + i)
+    for (let i = 1; i <= providers.length; i++) {
+      params.push('$' + i.toString())
     }
-    const firstClientQuery = 'WITH mapping AS (SELECT DISTINCT ON (provider) provider, client FROM current_state WHERE verified_deal = true AND sector_start_epoch > 0 AND provider IN ('
-      + params.join(', ') + ') ORDER BY provider, sector_start_epoch ASC) SELECT provider, client_address FROM mapping, client_mapping WHERE mapping.client = client_mapping.client'
-    this.logger.info({ firstClientQuery, providers})
+    const firstClientQuery = 'WITH mapping AS (SELECT DISTINCT ON (provider) provider, client FROM current_state WHERE verified_deal = true AND sector_start_epoch > 0 AND provider IN (' +
+      params.join(', ') + ') ORDER BY provider, sector_start_epoch ASC) SELECT provider, client_address FROM mapping, client_mapping WHERE mapping.client = client_mapping.client'
+    this.logger.info({ firstClientQuery, providers })
     const queryResult = await retry(async () => await this.sql.query(firstClientQuery, providers))
-    const rows: {provider: string, client_address: string }[] = queryResult.rows
+    const rows: Array<{ provider: string, client_address: string }> = queryResult.rows
     const result = new Map<string, string>()
     for (const row of rows) {
       result.set(row.provider, row.client_address)
@@ -221,7 +221,7 @@ export default class CidChecker {
     return response.data.content!.download_url!
   }
 
-  private getImageForReplicationDistribution (replicationDistributions: ReplicationDistribution[]): string {
+  private getImageForReplicationDistribution (replicationDistributions: ReplicationDistribution[], colorThreshold: number): string {
     const replicationEntries: BarChartEntry[] = []
 
     for (const distribution of replicationDistributions) {
@@ -233,8 +233,8 @@ export default class CidChecker {
       })
     }
 
-    const backgroundColors = replicationEntries.map((row) => row.xValue <= 2 ? RED : GREEN)
-    const borderColors = replicationEntries.map((row) => row.xValue <= 2 ? RED : GREEN)
+    const backgroundColors = replicationEntries.map((row) => row.xValue <= colorThreshold ? RED : GREEN)
+    const borderColors = replicationEntries.map((row) => row.xValue <= colorThreshold ? RED : GREEN)
 
     // not sure why typescript is complaining here on labels
     // ive nested the Partial as well and its still complaining
@@ -253,7 +253,6 @@ export default class CidChecker {
       title: 'Unique Data Bytes by Number of Providers',
       titleYText: 'Unique Data Bytes',
       titleXText: 'Number of Providers',
-      colorThreshold: 2,
       legendOpts,
       backgroundColors,
       borderColors
@@ -444,6 +443,10 @@ export default class CidChecker {
     this.getCidSharing(applicationInfo.clientAddress)
     ])
 
+    if (providerDistributions.length === 0) {
+      return undefined
+    }
+
     const providerDistributionRows: ProviderDistributionRow[] = providerDistributions.map(distribution => {
       const totalDealSize = xbytes(parseFloat(distribution.total_deal_size), { iec: true })
       const uniqueDataSize = xbytes(parseFloat(distribution.unique_data_size), { iec: true })
@@ -452,7 +455,7 @@ export default class CidChecker {
         location = 'Unknown'
       }
       return {
-        provider: (distribution.new ? '`new` ' : '' ) + generateLink(distribution.provider, `https://filfox.info/en/address/${distribution.provider}`),
+        provider: generateLink(distribution.provider, `https://filfox.info/en/address/${distribution.provider}`) + (distribution.new ? '`new` ' : ''),
         totalDealSize,
         uniqueDataSize,
         location,
@@ -489,7 +492,7 @@ export default class CidChecker {
     )
 
     const providerDistributionImage = this.getImageForProviderDistribution(providerDistributions)
-    const replicationDistributionImage = this.getImageForReplicationDistribution(replicationDistributions)
+    const replicationDistributionImage = this.getImageForReplicationDistribution(replicationDistributions, criteria.lowReplicaThreshold)
     const providerDistributionImageUrl = await this.uploadFile(
       `${repository.full_name}/issues/${issue.number}/${Date.now()}.png`,
       providerDistributionImage,
@@ -506,6 +509,9 @@ export default class CidChecker {
     content.push(` - Client: ${wrapInCode(applicationInfo.clientAddress)}`)
     content.push('### Storage Provider Distribution')
     content.push('The below table shows the distribution of storage providers that have stored data for this client.')
+    content.push('')
+    content.push('If this is the first time a provider takes verified deal, it will be marked as `new`.')
+    content.push('')
     content.push('For most of the datacap application, below restrictions should apply.')
     if (isEarlyAllocation) {
       content.push('')
