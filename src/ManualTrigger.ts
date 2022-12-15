@@ -3,7 +3,7 @@ import { getCidChecker } from './Dependency'
 import pino from 'pino'
 import { RestEndpointMethodTypes } from '@octokit/plugin-rest-endpoint-methods'
 import * as dotenv from 'dotenv'
-import { ProbotOctokit } from 'probot';
+import { ProbotOctokit } from 'probot'
 
 export async function manualTrigger (event: APIGatewayProxyEventV2, _: Context): Promise<APIGatewayProxyResult> {
   dotenv.config()
