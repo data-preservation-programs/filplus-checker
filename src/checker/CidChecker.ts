@@ -127,13 +127,14 @@ export default class CidChecker {
     private readonly allocationLabels: string[]) {
   }
 
-  private getClientAddress (issue: Issue): string {
+  private getClientAddress (issue: Issue): string | undefined {
     const regexAddress = /[\n\r][ \t]*-\s*On-chain\s*address\s*for\s*first\s*allocation:[ \t]*([^\n\r]*)/m
     const regexAddress2 = /[\n\r]*###\s*On-chain\s*address\s*for\s*first\s*allocation[\n\t]*([^\n\r]*)/
     // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
     const address: string | undefined = matchGroupLargeNotary(regexAddress, issue.body) || matchGroupLargeNotary(regexAddress2, issue.body)
     if (address == null || address[0] !== 'f') {
-      throw new Error('No address found')
+      this.logger.warn('Could not find address in issue %s', issue.number)
+      return undefined
     }
     this.logger.info(`Found address ${address} for issue ${issue.number}`)
     return address
@@ -422,6 +423,10 @@ export default class CidChecker {
       return undefined
     }
     const address = this.getClientAddress(issue)
+    if (address == null) {
+      logger.warn('No client address found')
+      return undefined
+    }
     const applicationInfo = await this.findApplicationInfoForClient(address)
     if (applicationInfo == null) {
       logger.warn('No application info found')

@@ -3,7 +3,7 @@ import {manualTrigger} from "../src/ManualTrigger";
 xdescribe('manualTrigger', () => {
   jasmine.DEFAULT_TIMEOUT_INTERVAL = 86400000
   it ('should trigger the check', async () => {
-    for (let i = 0; i <= 0; i++) {
+    for (let i = 1; i <= 1500; i++) {
       console.log(`Triggering ${i}`)
       const event = {
         queryStringParameters: {
