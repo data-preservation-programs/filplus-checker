@@ -424,7 +424,8 @@ export default class CidChecker {
     const address = this.getClientAddress(issue)
     const applicationInfo = await this.findApplicationInfoForClient(address)
     if (applicationInfo == null) {
-      throw new Error('Invalid issue')
+      logger.warn('No application info found')
+      return undefined
     }
     logger = logger.child({ clientAddress: applicationInfo.clientAddress })
     logger.info(applicationInfo, 'Retrieved application info')
