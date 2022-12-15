@@ -11,7 +11,7 @@ const handler: ApplicationFunction = (app: Probot, _options: ApplicationFunction
         return
       }
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    } else if (!context.payload.comment.body.includes(process.env.TARGET_COMMENT!)) {
+    } else if (context.payload.comment.body.trim() !== process.env.TARGET_COMMENT!) {
       return
     }
 

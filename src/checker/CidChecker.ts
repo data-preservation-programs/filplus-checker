@@ -14,7 +14,6 @@ import {
   IpInfoResponse,
   GetVerifiedClientResponse
 } from './Types'
-import { parseIssue } from '../../dep/filecoin-verifier-tools/utils/large-issue-parser'
 import { generateGfmTable, escape, generateLink, wrapInCode } from './MarkdownUtils'
 import xbytes from 'xbytes'
 import emoji from 'node-emoji'
@@ -29,6 +28,7 @@ import { Multiaddr } from 'multiaddr'
 import BarChart, { BarChartEntry } from '../charts/BarChart'
 import GeoMap, { GeoMapEntry } from '../charts/GeoMap'
 import { Chart, LegendOptions } from 'chart.js'
+import { matchGroupLargeNotary } from '../../dist/dep/filecoin-verifier-tools/utils/common-utils'
 
 const RED = 'rgba(255, 99, 132)'
 const GREEN = 'rgba(75, 192, 192)'
@@ -128,12 +128,15 @@ export default class CidChecker {
   }
 
   private getClientAddress (issue: Issue): string {
-    const parseResult = parseIssue(issue.body ?? '')
-    if (!parseResult.correct) {
-      throw new Error(`Invalid issue body.\n  errorMessage: ${parseResult.errorMessage}\n  errorDetails: ${parseResult.errorDetails}`)
+    const regexAddress = /[\n\r][ \t]*-\s*On-chain\s*address\s*for\s*first\s*allocation:[ \t]*([^\n\r]*)/m
+    const regexAddress2 = /[\n\r]*###\s*On-chain\s*address\s*for\s*first\s*allocation[\n\t]*([^\n\r]*)/
+    // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
+    const address: string | undefined = matchGroupLargeNotary(regexAddress, issue.body) || matchGroupLargeNotary(regexAddress2, issue.body)
+    if (address == null || address[0] !== 'f') {
+      throw new Error('No address found')
     }
-
-    return parseResult.address
+    this.logger.info(`Found address ${address} for issue ${issue.number}`)
+    return address
   }
 
   private static getCurrentEpoch (): number {
@@ -430,6 +433,9 @@ export default class CidChecker {
     const [providerDistributions, replicationDistributions, cidSharing] = await Promise.all([(async () => {
       const result = await this.getStorageProviderDistribution(applicationInfo.clientAddress)
       const providers = result.map(r => r.provider)
+      if (providers.length === 0) {
+        return []
+      }
       const firstClientByProvider = await this.getFirstClientByProviders(providers)
       const withLocations: ProviderDistributionWithLocation[] = []
       for (const item of result) {
