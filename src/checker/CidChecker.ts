@@ -140,6 +140,23 @@ export default class CidChecker {
     return Math.floor((Date.now() / 1000 - 1598306400) / 30)
   }
 
+  private async getFirstClientByProviders (providers: string[]): Promise<Map<string, string>> {
+    const params = []
+    for (let i = 1; i <= providers.length; i ++) {
+      params.push('$' + i)
+    }
+    const firstClientQuery = 'WITH mapping AS (SELECT DISTINCT ON (provider) provider, client FROM current_state WHERE verified_deal = true AND sector_start_epoch > 0 AND provider IN ('
+      + params.join(', ') + ') ORDER BY provider, sector_start_epoch ASC) SELECT provider, client_address FROM mapping, client_mapping WHERE mapping.client = client_mapping.client'
+    this.logger.info({ firstClientQuery, providers})
+    const queryResult = await retry(async () => await this.sql.query(firstClientQuery, providers))
+    const rows: {provider: string, client_address: string }[] = queryResult.rows
+    const result = new Map<string, string>()
+    for (const row of rows) {
+      result.set(row.provider, row.client_address)
+    }
+    return result
+  }
+
   private async getStorageProviderDistribution (client: string): Promise<ProviderDistribution[]> {
     const currentEpoch = CidChecker.getCurrentEpoch()
     this.logger.info({ client, currentEpoch }, 'Getting storage provider distribution')
@@ -413,10 +430,13 @@ export default class CidChecker {
 
     const [providerDistributions, replicationDistributions, cidSharing] = await Promise.all([(async () => {
       const result = await this.getStorageProviderDistribution(applicationInfo.clientAddress)
-      const withLocations = []
+      const providers = result.map(r => r.provider)
+      const firstClientByProvider = await this.getFirstClientByProviders(providers)
+      const withLocations: ProviderDistributionWithLocation[] = []
       for (const item of result) {
         const location = await this.getLocation(item.provider)
-        withLocations.push({ ...item, ...location })
+        const isNew = firstClientByProvider.get(item.provider) === applicationInfo.clientAddress
+        withLocations.push({ ...item, ...location, new: isNew })
       }
       return withLocations
     })(),
@@ -432,7 +452,7 @@ export default class CidChecker {
         location = 'Unknown'
       }
       return {
-        provider: generateLink(distribution.provider, `https://filfox.info/en/address/${distribution.provider}`),
+        provider: (distribution.new ? '`new` ' : '' ) + generateLink(distribution.provider, `https://filfox.info/en/address/${distribution.provider}`),
         totalDealSize,
         uniqueDataSize,
         location,

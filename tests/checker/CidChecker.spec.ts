@@ -227,7 +227,7 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
     beforeAll( () => {
       nock.disableNetConnect();
     })
-    it('should return the markdown content (fake)', async () => {
+    fit('should return the markdown content (fake)', async () => {
       const issue2 = JSON.parse(JSON.stringify(issue))
       issue2.body = issue2.body.replace('f12345', 'fxxxx2')
       issue2.title = issue2.title.replace('My Project', 'My Project2')
@@ -299,7 +299,7 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
         console.error(mock1.pendingMocks())
       }
       expect(mock1.isDone()).toBeTruthy();
-      //fs.writeFileSync('tests/fixtures/expected.md', report!)
+      fs.writeFileSync('tests/fixtures/expected.md', report!)
       expect(report).toEqual(fs.readFileSync('tests/fixtures/expected.md', 'utf8'))
     })
   })

@@ -28,7 +28,7 @@ export interface MinerInfo {
   SectorSize: number
 }
 
-export type ProviderDistributionWithLocation = ProviderDistribution & Location
+export type ProviderDistributionWithLocation = ProviderDistribution & Location & { new: boolean }
 
 export interface ProviderDistributionRow {
   provider: string
