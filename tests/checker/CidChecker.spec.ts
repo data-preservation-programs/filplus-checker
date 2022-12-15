@@ -227,7 +227,7 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
     beforeAll( () => {
       nock.disableNetConnect();
     })
-    fit('should return the markdown content (fake)', async () => {
+    it('should return the markdown content (fake)', async () => {
       const issue2 = JSON.parse(JSON.stringify(issue))
       issue2.body = issue2.body.replace('f12345', 'fxxxx2')
       issue2.title = issue2.title.replace('My Project', 'My Project2')

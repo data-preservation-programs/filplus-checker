@@ -3,6 +3,7 @@ import { getCidChecker } from './Dependency'
 import pino from 'pino'
 import { RestEndpointMethodTypes } from '@octokit/plugin-rest-endpoint-methods'
 import * as dotenv from 'dotenv'
+import { ProbotOctokit } from 'probot';
 
 export async function manualTrigger (event: APIGatewayProxyEventV2, _: Context): Promise<APIGatewayProxyResult> {
   dotenv.config()
@@ -33,7 +34,7 @@ export async function manualTrigger (event: APIGatewayProxyEventV2, _: Context):
       body: 'Error fetching issue ' + issueId
     }
   }
-  await cidchecker.check({
+  const body = await cidchecker.check({
     issue: response.data,
     repository: {
       owner: {
@@ -43,6 +44,20 @@ export async function manualTrigger (event: APIGatewayProxyEventV2, _: Context):
       full_name: 'filecoin-project/filecoin-plus-large-datasets'
     }
   } as any)
+
+  if (body !== undefined) {
+    const octokit = new ProbotOctokit({
+      auth: {
+        token: process.env.UPLOAD_TOKEN
+      }
+    })
+    await octokit.issues.createComment({
+      owner: 'filecoin-project',
+      repo: 'filecoin-plus-large-datasets',
+      issue_number: parseInt(issueId),
+      body
+    })
+  }
 
   return {
     statusCode: 200,

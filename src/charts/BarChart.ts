@@ -19,7 +19,6 @@ interface BarOptions {
   legendOpts?: Partial<LegendOptions<'bar'>>
   backgroundColors?: Color[]
   borderColors?: Color[]
-  colorThreshold?: number
   width?: number
   height?: number
 }
