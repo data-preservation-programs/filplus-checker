@@ -161,7 +161,7 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
   })
 
   describe('getLocation', () => {
-    it('should return the location', async () => {
+    xit('should return the location', async () => {
       const location = await checker['getLocation']('f01974746')
       expect(location).toBeNull()
     })
@@ -216,6 +216,13 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
         console.error(mock1.pendingMocks())
       }
       expect(mock1.isDone()).toBeTruthy();
+    })
+  })
+  describe('getErrorContent', () => {
+    it('should return the error template', async () => {
+      const content = CidChecker['getErrorContent']('test message')
+      //fs.writeFileSync('tests/fixtures/error.md', content)
+      expect(content).toEqual(fs.readFileSync('tests/fixtures/error.md', 'utf8'))
     })
   })
 
@@ -299,7 +306,7 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
         console.error(mock1.pendingMocks())
       }
       expect(mock1.isDone()).toBeTruthy();
-      fs.writeFileSync('tests/fixtures/expected.md', report!)
+      // fs.writeFileSync('tests/fixtures/expected.md', report!)
       expect(report).toEqual(fs.readFileSync('tests/fixtures/expected.md', 'utf8'))
     })
   })

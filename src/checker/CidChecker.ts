@@ -50,6 +50,17 @@ export interface Criteria {
 }
 
 export default class CidChecker {
+  private static readonly ErrorTemplate = `
+  ## DataCap and CID Checker Report[^1]
+  {message}
+  
+  [^1]: To manually trigger this report, add a comment with text \`checker:manualTrigger\`
+  `
+
+  private static getErrorContent (message: string): string {
+    return CidChecker.ErrorTemplate.replace('{message}', message)
+  }
+
   private static readonly issueApplicationInfoCache: Map<string, ApplicationInfo | null> = new Map()
   private static readonly ProviderDistributionQuery = `
       WITH miner_pieces AS (SELECT provider,
@@ -420,17 +431,15 @@ export default class CidChecker {
     const isEarlyAllocation = criterias.length > allocations
     logger.info({ allocations }, 'Retrieved number of previous allocations')
     if (allocations === 0) {
-      return undefined
+      return await this.uploadReport(CidChecker.getErrorContent('There is no previous allocation for this issue.'), event)
     }
     const address = this.getClientAddress(issue)
     if (address == null) {
-      logger.warn('No client address found')
-      return undefined
+      return await this.uploadReport(CidChecker.getErrorContent('No client address found for this issue.'), event)
     }
     const applicationInfo = await this.findApplicationInfoForClient(address)
     if (applicationInfo == null) {
-      logger.warn('No application info found')
-      return undefined
+      return await this.uploadReport(CidChecker.getErrorContent('No application info found for this issue on https://filplus.d.interplanetary.one/clients.'), event)
     }
     logger = logger.child({ clientAddress: applicationInfo.clientAddress })
     logger.info(applicationInfo, 'Retrieved application info')
@@ -456,7 +465,7 @@ export default class CidChecker {
     ])
 
     if (providerDistributions.length === 0) {
-      return undefined
+      return await this.uploadReport(CidChecker.getErrorContent('No active deals found for this client.'), event)
     }
 
     const providerDistributionRows: ProviderDistributionRow[] = providerDistributions.map(distribution => {
@@ -636,6 +645,12 @@ export default class CidChecker {
     content.push('[^1]: To manually trigger this report, add a comment with text `checker:manualTrigger`')
     content.push('')
     const joinedContent = content.join('\n')
+    return await this.uploadReport(joinedContent, event)
+  }
+
+  private async uploadReport (joinedContent: string, event: { issue: Issue, repository: Repository }): Promise<string> {
+    const { issue, repository } = event
+    const logger = this.logger.child({ issueNumber: issue.number })
     const contentUrl = await this.uploadFile(
       `${repository.full_name}/issues/${issue.number}/${Date.now()}.md`,
       Buffer.from(joinedContent).toString('base64'),
