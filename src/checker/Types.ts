@@ -12,6 +12,7 @@ export interface Location {
   country?: string
   latitude?: number
   longitude?: number
+  orgName?: string
 }
 
 export interface IpInfoResponse {
@@ -20,6 +21,7 @@ export interface IpInfoResponse {
   country?: string
   loc?: string
   bogon?: boolean
+  org?: string
 }
 
 export interface MinerInfo {

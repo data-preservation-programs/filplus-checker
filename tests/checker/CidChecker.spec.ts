@@ -167,7 +167,7 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
     })
     it('should return the location', async () => {
       const location = await checker['getLocation']('f01887652')
-      expect(location).toEqual({ city: 'Ashburn', country: 'US', region: 'Virginia', latitude: 39.0437, longitude: -77.4875 })
+      expect(location).toEqual({ city: 'Ashburn', country: 'US', region: 'Virginia', latitude: 39.0437, longitude: -77.4875, orgName: 'Amazon.com, Inc.' })
     })
   })
 
@@ -306,7 +306,7 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
         console.error(mock1.pendingMocks())
       }
       expect(mock1.isDone()).toBeTruthy();
-      // fs.writeFileSync('tests/fixtures/expected.md', report!)
+      //fs.writeFileSync('tests/fixtures/expected.md', report!)
       expect(report).toEqual(fs.readFileSync('tests/fixtures/expected.md', 'utf8'))
     })
   })

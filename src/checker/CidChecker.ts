@@ -412,7 +412,8 @@ export default class CidChecker {
         country: data.country,
         region: data.region,
         latitude: (data.loc != null) ? parseFloat(data.loc.split(',')[0]) : undefined,
-        longitude: (data.loc != null) ? parseFloat(data.loc.split(',')[1]) : undefined
+        longitude: (data.loc != null) ? parseFloat(data.loc.split(',')[1]) : undefined,
+        orgName: data.org != null ? data.org.split(' ').slice(1).join(' ') : 'Unknown'
       }
     }
     return null
@@ -458,7 +459,7 @@ export default class CidChecker {
         const isNew = firstClientByProvider.get(item.provider) === applicationInfo.clientAddress
         withLocations.push({ ...item, ...location, new: isNew })
       }
-      return withLocations
+      return withLocations.sort((a, b) => a.orgName?.localeCompare(b.orgName ?? '') ?? 0)
     })(),
     this.getReplicationDistribution(applicationInfo.clientAddress),
     this.getCidSharing(applicationInfo.clientAddress)
@@ -475,11 +476,12 @@ export default class CidChecker {
       if (location === '' || location == null) {
         location = 'Unknown'
       }
+      const orgName = distribution.orgName ?? 'Unknown'
       return {
         provider: generateLink(distribution.provider, `https://filfox.info/en/address/${distribution.provider}`) + (distribution.new ? '`new` ' : ''),
         totalDealSize,
         uniqueDataSize,
-        location,
+        location: location + '<br/>' + wrapInCode(orgName),
         percentage: `${(distribution.percentage * 100).toFixed(2)}%`,
         duplicatePercentage: `${(distribution.duplication_percentage * 100).toFixed(2)}%`
       }
