@@ -29,6 +29,9 @@ import BarChart, { BarChartEntry } from '../charts/BarChart'
 import GeoMap, { GeoMapEntry } from '../charts/GeoMap'
 import { Chart, LegendOptions } from 'chart.js'
 import { matchGroupLargeNotary } from '../../dep/filecoin-verifier-tools/utils/common-utils'
+import * as whois from '../whois/whois'
+import { promisify } from 'util'
+import parseRawData from '../whois/parse-raw-data.js'
 
 const RED = 'rgba(255, 99, 132)'
 const GREEN = 'rgba(75, 192, 192)'
@@ -153,6 +156,37 @@ export default class CidChecker {
 
   private static getCurrentEpoch (): number {
     return Math.floor((Date.now() / 1000 - 1598306400) / 30)
+  }
+
+  public async getOrgName (ip: string): Promise<string> {
+    let lastData: any
+    const lookup = (host: string, callback: any): void => {
+      // @ts-expect-error
+      whois.lookup(host, { follow: 5 }, (err: any, data: any) => {
+        if (data != null) {
+          lastData = data
+        }
+        callback(err, data)
+      })
+    }
+    const lookupPromisified = promisify(lookup)
+    try {
+      await lookupPromisified(ip)
+    } catch (e) {
+      this.logger.error({ error: e, host: ip }, 'Could not lookup whois data')
+    }
+
+    try {
+      if (typeof lastData === 'object') {
+        return lastData.map(function (data: any) {
+          return (parseRawData(data.data) as any).orgName
+        }).join(' | ')
+      }
+      return (parseRawData(lastData) as any).orgName
+    } catch (e) {
+      this.logger.error({ error: e, host: ip }, 'Could not parse whois data')
+      return 'Unknown'
+    }
   }
 
   private async getFirstClientByProviders (providers: string[]): Promise<Map<string, string>> {
@@ -412,7 +446,8 @@ export default class CidChecker {
         country: data.country,
         region: data.region,
         latitude: (data.loc != null) ? parseFloat(data.loc.split(',')[0]) : undefined,
-        longitude: (data.loc != null) ? parseFloat(data.loc.split(',')[1]) : undefined
+        longitude: (data.loc != null) ? parseFloat(data.loc.split(',')[1]) : undefined,
+        orgName: await this.getOrgName(ip)
       }
     }
     return null
@@ -475,11 +510,12 @@ export default class CidChecker {
       if (location === '' || location == null) {
         location = 'Unknown'
       }
+      const orgName = distribution.orgName ?? 'Unknown'
       return {
         provider: generateLink(distribution.provider, `https://filfox.info/en/address/${distribution.provider}`) + (distribution.new ? '`new` ' : ''),
         totalDealSize,
         uniqueDataSize,
-        location,
+        location: location + '<br/>' + wrapInCode(orgName),
         percentage: `${(distribution.percentage * 100).toFixed(2)}%`,
         duplicatePercentage: `${(distribution.duplication_percentage * 100).toFixed(2)}%`
       }

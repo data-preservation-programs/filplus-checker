@@ -12,6 +12,7 @@ export interface Location {
   country?: string
   latitude?: number
   longitude?: number
+  orgName?: string
 }
 
 export interface IpInfoResponse {
