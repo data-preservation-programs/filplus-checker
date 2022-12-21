@@ -313,7 +313,7 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
         console.error(mock1.pendingMocks())
       }
       expect(mock1.isDone()).toBeTruthy();
-      // fs.writeFileSync('tests/fixtures/expected.md', report!)
+      //fs.writeFileSync('tests/fixtures/expected.md', report!)
       expect(report).toEqual(fs.readFileSync('tests/fixtures/expected.md', 'utf8'))
     })
   })

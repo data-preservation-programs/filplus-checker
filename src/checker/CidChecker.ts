@@ -29,9 +29,7 @@ import BarChart, { BarChartEntry } from '../charts/BarChart'
 import GeoMap, { GeoMapEntry } from '../charts/GeoMap'
 import { Chart, LegendOptions } from 'chart.js'
 import { matchGroupLargeNotary } from '../../dep/filecoin-verifier-tools/utils/common-utils'
-import * as whois from '../whois/whois'
-import { promisify } from 'util'
-import parseRawData from '../whois/parse-raw-data.js'
+import execa from 'execa'
 
 const RED = 'rgba(255, 99, 132)'
 const GREEN = 'rgba(75, 192, 192)'
@@ -159,32 +157,15 @@ export default class CidChecker {
   }
 
   public async getOrgName (ip: string): Promise<string> {
-    let lastData: any
-    const lookup = (host: string, callback: any): void => {
-      // @ts-expect-error
-      whois.lookup(host, { follow: 5 }, (err: any, data: any) => {
-        if (data != null) {
-          lastData = data
-        }
-        callback(err, data)
-      })
-    }
-    const lookupPromisified = promisify(lookup)
+    const process = execa.command(`whois ${ip} | egrep -i 'org.?name' | tail -n 1 | cut -d':' -f2`, { shell: true })
+    setTimeout(() => {
+      process.cancel()
+    }, 5000)
     try {
-      await lookupPromisified(ip)
+      const { stdout } = await process
+      return stdout.trim()
     } catch (e) {
-      this.logger.error({ error: e, host: ip }, 'Could not lookup whois data')
-    }
-
-    try {
-      if (typeof lastData === 'object') {
-        return lastData.map(function (data: any) {
-          return (parseRawData(data.data) as any).orgName
-        }).join(' | ')
-      }
-      return (parseRawData(lastData) as any).orgName
-    } catch (e) {
-      this.logger.error({ error: e, host: ip }, 'Could not parse whois data')
+      this.logger.error({ error: e, ip }, 'Could not get org name for ip')
       return 'Unknown'
     }
   }
