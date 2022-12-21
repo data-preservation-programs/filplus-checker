@@ -45,13 +45,6 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
     }
   });
 
-  describe('getOrgName', () => {
-    it('should return the org name', async () => {
-      const response = await checker.getOrgName('8.8.8.8')
-      expect(response).toContain('Google')
-    })
-  })
-
   describe('getApplicationInfoLarge', () => {
     it('should return the client address', () => {
       const info = checker['getClientAddress'](issue)
@@ -174,7 +167,7 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
     })
     it('should return the location', async () => {
       const location = await checker['getLocation']('f01887652')
-      expect(location).toEqual({ city: 'Ashburn', country: 'US', region: 'Virginia', latitude: 39.0437, longitude: -77.4875, orgName: 'Amazon Technologies Inc.' })
+      expect(location).toEqual({ city: 'Ashburn', country: 'US', region: 'Virginia', latitude: 39.0437, longitude: -77.4875, orgName: 'Amazon.com, Inc.' })
     })
   })
 

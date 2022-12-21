@@ -21,6 +21,7 @@ export interface IpInfoResponse {
   country?: string
   loc?: string
   bogon?: boolean
+  org?: string
 }
 
 export interface MinerInfo {

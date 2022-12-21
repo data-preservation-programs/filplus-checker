@@ -29,7 +29,6 @@ import BarChart, { BarChartEntry } from '../charts/BarChart'
 import GeoMap, { GeoMapEntry } from '../charts/GeoMap'
 import { Chart, LegendOptions } from 'chart.js'
 import { matchGroupLargeNotary } from '../../dep/filecoin-verifier-tools/utils/common-utils'
-import execa from 'execa'
 
 const RED = 'rgba(255, 99, 132)'
 const GREEN = 'rgba(75, 192, 192)'
@@ -154,20 +153,6 @@ export default class CidChecker {
 
   private static getCurrentEpoch (): number {
     return Math.floor((Date.now() / 1000 - 1598306400) / 30)
-  }
-
-  public async getOrgName (ip: string): Promise<string> {
-    const process = execa.command(`whois ${ip} | egrep -i 'org.?name' | tail -n 1 | cut -d':' -f2`, { shell: true })
-    setTimeout(() => {
-      process.cancel()
-    }, 5000)
-    try {
-      const { stdout } = await process
-      return stdout.trim()
-    } catch (e) {
-      this.logger.error({ error: e, ip }, 'Could not get org name for ip')
-      return 'Unknown'
-    }
   }
 
   private async getFirstClientByProviders (providers: string[]): Promise<Map<string, string>> {
@@ -428,7 +413,7 @@ export default class CidChecker {
         region: data.region,
         latitude: (data.loc != null) ? parseFloat(data.loc.split(',')[0]) : undefined,
         longitude: (data.loc != null) ? parseFloat(data.loc.split(',')[1]) : undefined,
-        orgName: await this.getOrgName(ip)
+        orgName: data.org != null ? data.org.split(' ').slice(1).join(' ') : 'Unknown'
       }
     }
     return null
@@ -474,7 +459,7 @@ export default class CidChecker {
         const isNew = firstClientByProvider.get(item.provider) === applicationInfo.clientAddress
         withLocations.push({ ...item, ...location, new: isNew })
       }
-      return withLocations
+      return withLocations.sort((a, b) => a.orgName?.localeCompare(b.orgName ?? '') ?? 0)
     })(),
     this.getReplicationDistribution(applicationInfo.clientAddress),
     this.getCidSharing(applicationInfo.clientAddress)
