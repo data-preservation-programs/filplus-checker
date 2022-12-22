@@ -2,7 +2,7 @@
  - Organization: `org1`
  - Client: `f12345`
 ### Approvers
-
+`1`user3
 
 ### Storage Provider Distribution
 The below table shows the distribution of storage providers that have stored data for this client.
@@ -57,7 +57,7 @@ However, this could be possible if all below clients use same software to prepar
 
 | Other Client                                    | Application  | Total Deals Affected | Unique CIDs | Approvers |
 | :---------------------------------------------- | :----------- | -------------------: | ----------: | :-------- |
-| [fxxxx3](https://filfox.info/en/address/fxxxx3) | [org2](url2) |             200.00 B |           2 | Unknown   |
-| [fxxxx2](https://filfox.info/en/address/fxxxx2) | [org3](url3) |             100.00 B |           1 | Unknown   |
+| [fxxxx3](https://filfox.info/en/address/fxxxx3) | [org2](url2) |             200.00 B |           2 | `1`user1  |
+| [fxxxx2](https://filfox.info/en/address/fxxxx2) | [org3](url3) |             100.00 B |           1 | `1`user2  |
 
 [^1]: To manually trigger this report, add a comment with text `checker:manualTrigger`

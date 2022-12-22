@@ -247,7 +247,11 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
         .get(uri => uri.includes("events"))
         .reply(200, [{event: 'labeled', label: { name: 'state:Granted'}}])
         .get(uri => uri.includes("comments"))
-        .reply(200, [{body: 'Request Approved', user: { login: 'user1' }}])
+        .reply(200, [{body: '## Request Approved', user: { login: 'user1' }}])
+        .get(uri => uri.includes("comments"))
+        .reply(200, [{body: '## Request Approved', user: { login: 'user2' }}])
+        .get(uri => uri.includes("comments"))
+        .reply(200, [{body: '## Request Approved', user: { login: 'user3' }}])
         .put(uri => uri.includes("/repos/test-owner/test-repo/contents"))
         .reply(201, {content: { "download_url": "./provider.png" }})
         .put(uri => uri.includes("/repos/test-owner/test-repo/contents"))
@@ -259,19 +263,22 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
           organizationName: 'org1',
           clientAddress: 'f12345',
           verifier: 'verifier1',
-          url: 'url1'
+          url: 'url1',
+          issueNumber: '1'
         }),
         Promise.resolve({
           organizationName: 'org2',
           clientAddress: 'fxxxx3',
           verifier: 'verifier2',
-          url: 'url2'
+          url: 'url2',
+          issueNumber: '2'
         }),
         Promise.resolve({
           organizationName: 'org3',
           clientAddress: 'fxxxx2',
           verifier: 'verifier3',
-          url: 'url3'
+          url: 'url3',
+          issueNumber: '3'
         }))
       spyOn<any>(checker, 'getLocation').and.returnValues(
         Promise.resolve(null),
