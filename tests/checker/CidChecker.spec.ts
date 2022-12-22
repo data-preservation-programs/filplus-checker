@@ -210,7 +210,8 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
         clientAddress: 'address1',
         verifier: 'LDN v3 multisig',
         organizationName: 'Org Name',
-        url: 'https://github.com/filecoin-project/filecoin-plus-large-datasets/issues/xxx'
+        url: 'https://github.com/filecoin-project/filecoin-plus-large-datasets/issues/xxx',
+        issueNumber: 'xxx',
       })
       if (mock1.pendingMocks().length > 0) {
         console.error(mock1.pendingMocks())
@@ -245,6 +246,8 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
       const mock1 = nock("https://api.github.com")
         .get(uri => uri.includes("events"))
         .reply(200, [{event: 'labeled', label: { name: 'state:Granted'}}])
+        .get(uri => uri.includes("comments"))
+        .reply(200, [{body: 'Request Approved', user: { login: 'user1' }}])
         .put(uri => uri.includes("/repos/test-owner/test-repo/contents"))
         .reply(201, {content: { "download_url": "./provider.png" }})
         .put(uri => uri.includes("/repos/test-owner/test-repo/contents"))

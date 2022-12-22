@@ -74,6 +74,7 @@ export interface ApplicationInfo {
   clientAddress: string
   verifier: string
   url: string
+  issueNumber: string | undefined
 }
 
 export interface GetVerifiedClientResponse {
