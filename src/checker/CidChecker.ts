@@ -626,6 +626,8 @@ export default class CidChecker {
     content.push('The below table shows how many unique data are shared with other clients.')
     content.push('Usually different applications owns different data and should not resolve to the same CID.')
     content.push('')
+    content.push('However, this could be possible if all below clients use same software to prepare for the exact same dataset or they belong to a series of LDN applications for the same dataset.')
+    content.push('')
     if (cidSharingRows.length > 0) {
       for (const row of cidSharingRows) {
         logger.info({ otherClientAddress: row.otherClientAddress }, 'CID is shared with another client')

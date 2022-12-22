@@ -48,6 +48,8 @@ The below table shows how each many unique data are replicated across storage pr
 The below table shows how many unique data are shared with other clients.
 Usually different applications owns different data and should not resolve to the same CID.
 
+However, this could be possible if all below clients use same software to prepare for the exact same dataset or they belong to a series of LDN applications for the same dataset.
+
 ⚠️ CID sharing has been observed.
 
 | Other Client                                    | Application  | Total Deals Affected | Unique CIDs |  Verifier |
