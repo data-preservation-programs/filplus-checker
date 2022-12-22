@@ -308,7 +308,8 @@ export default class CidChecker {
       clientAddress: client,
       organizationName: (primary.name ?? '') + (primary.orgName ?? ''),
       url: primary.allowanceArray[0]?.auditTrail,
-      verifier: primary.verifierName
+      verifier: primary.verifierName,
+      issueNumber: primary.allowanceArray[0]?.auditTrail?.split('/').pop()
     }
     CidChecker.issueApplicationInfoCache.set(client, result)
     return result
@@ -384,6 +385,44 @@ export default class CidChecker {
       })
       return response.data.result
     })
+  }
+
+  private static renderApprovers (approvers: Array<[string, number]>): string {
+    return approvers.map(([name, count]) => `${wrapInCode(count.toString())}${name}`).join('<br/>')
+  }
+
+  private async getApprovers (issueNumber: number, repo: Repository): Promise<Array<[string, number]>> {
+    type Params = RestEndpointMethodTypes['issues']['listComments']['parameters']
+    type Response = RestEndpointMethodTypes['issues']['listComments']['response']
+    let page = 1
+    const comments = []
+    while (true) {
+      const params: Params = {
+        owner: repo.owner.login,
+        repo: repo.name,
+        issue_number: issueNumber,
+        per_page: 100,
+        page
+      }
+      this.logger.info(params, 'Getting comments for issue')
+      const response: Response = await retry(async () => await this.octokit.request('GET /repos/{owner}/{repo}/issues/{issue_number}/comments', params))
+      comments.push(...response.data)
+      if (response.data.length < 100) {
+        break
+      }
+      page++
+    }
+
+    const approvers = new Map<string, number>()
+    for (const comment of comments) {
+      if (comment.body?.startsWith('## Request Approved') === true ||
+        comment.body?.startsWith('## Request Proposed') === true) {
+        const approver = comment.user?.login ?? 'Unknown'
+        const count = approvers.get(approver) ?? 0
+        approvers.set(approver, count + 1)
+      }
+    }
+    return [...approvers.entries()].sort((a, b) => a[0].localeCompare(b[0]))
   }
 
   private async getLocation (provider: string): Promise<Location | null> {
@@ -508,7 +547,9 @@ export default class CidChecker {
             totalDealSize,
             uniqueCidCount: share.unique_cid_count.toLocaleString('en-US'),
             otherClientOrganizationName: CidChecker.linkifyApplicationInfo(otherApplication),
-            verifier: otherApplication?.verifier ?? 'Unknown'
+            verifier: otherApplication?.issueNumber == null
+              ? 'Unknown'
+              : CidChecker.renderApprovers(await this.getApprovers(parseInt(otherApplication.issueNumber), repository))
           }
         }
       )
@@ -530,6 +571,9 @@ export default class CidChecker {
     content.push('## DataCap and CID Checker Report[^1]')
     content.push(` - Organization: ${wrapInCode(applicationInfo.organizationName)}`)
     content.push(` - Client: ${wrapInCode(applicationInfo.clientAddress)}`)
+    content.push('### Approvers')
+    content.push(CidChecker.renderApprovers(await this.getApprovers(issue.number, repository)))
+    content.push('')
     content.push('### Storage Provider Distribution')
     content.push('The below table shows the distribution of storage providers that have stored data for this client.')
     content.push('')
@@ -639,7 +683,7 @@ export default class CidChecker {
         ['otherClientOrganizationName', { name: 'Application', align: 'l' }],
         ['totalDealSize', { name: 'Total Deals Affected', align: 'r' }],
         ['uniqueCidCount', { name: 'Unique CIDs', align: 'r' }],
-        ['verifier', { name: 'Verifier', align: 'r' }]
+        ['verifier', { name: 'Approvers', align: 'l' }]
       ]))
     } else {
       content.push(emoji.get('heavy_check_mark') + ' No CID sharing has been observed.')
