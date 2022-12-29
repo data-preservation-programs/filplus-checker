@@ -163,7 +163,7 @@ export default class CidChecker {
     const firstClientQuery = 'WITH mapping AS (SELECT DISTINCT ON (provider) provider, client FROM current_state WHERE verified_deal = true AND sector_start_epoch > 0 AND provider IN (' +
       params.join(', ') + ') ORDER BY provider, sector_start_epoch ASC) SELECT provider, client_address FROM mapping, client_mapping WHERE mapping.client = client_mapping.client'
     this.logger.info({ firstClientQuery, providers })
-    const queryResult = await retry(async () => await this.sql.query(firstClientQuery, providers))
+    const queryResult = await retry(async () => await this.sql.query(firstClientQuery, providers), { retries: 3 })
     const rows: Array<{ provider: string, client_address: string }> = queryResult.rows
     const result = new Map<string, string>()
     for (const row of rows) {
@@ -177,7 +177,7 @@ export default class CidChecker {
     this.logger.info({ client, currentEpoch }, 'Getting storage provider distribution')
     const queryResult = await retry(async () => await this.sql.query(
       CidChecker.ProviderDistributionQuery,
-      [client, currentEpoch]))
+      [client, currentEpoch]), { retries: 3 })
     const distributions = queryResult.rows as ProviderDistribution[]
     const total = distributions.reduce((acc, cur) => acc + parseFloat(cur.total_deal_size), 0)
     for (const distribution of distributions) {
@@ -192,7 +192,7 @@ export default class CidChecker {
     this.logger.info({ client, currentEpoch }, 'Getting replication distribution')
     const queryResult = await retry(async () => await this.sql.query(
       CidChecker.ReplicaDistributionQuery,
-      [client, currentEpoch]))
+      [client, currentEpoch]), { retries: 3 })
     const distributions = queryResult.rows as ReplicationDistribution[]
     const total = distributions.reduce((acc, cur) => acc + parseFloat(cur.total_deal_size), 0)
     for (const distribution of distributions) {
@@ -206,7 +206,7 @@ export default class CidChecker {
     this.logger.info({ client }, 'Getting cid sharing')
     const queryResult = await retry(async () => await this.sql.query(
       CidChecker.CidSharingQuery,
-      [client]))
+      [client]), { retries: 3 })
     const sharing = queryResult.rows as CidSharing[]
     this.logger.debug({ sharing }, 'Got cid sharing')
     return sharing
@@ -229,7 +229,7 @@ export default class CidChecker {
     }
 
     this.logger.info({ owner: params.owner, repo: params.repo, path: params.path, message: params.message }, 'Uploading file')
-    const response: Response = await retry(async () => await this.octokit.request('PUT /repos/{owner}/{repo}/contents/{path}', params))
+    const response: Response = await retry(async () => await this.octokit.request('PUT /repos/{owner}/{repo}/contents/{path}', params), { retries: 3 })
 
     this.logger.info({ owner: params.owner, repo: params.repo, path: params.path, message: params.message }, 'Uploaded file')
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -297,7 +297,7 @@ export default class CidChecker {
     }
     this.logger.info({ client }, 'Finding application info for client')
     const response = await retry(async () => await axios.get(
-      `https://api.filplus.d.interplanetary.one/api/getVerifiedClients?limit=10&page=1&filter=${client}`))
+      `https://api.filplus.d.interplanetary.one/api/getVerifiedClients?limit=10&page=1&filter=${client}`), { retries: 3 })
     const data: GetVerifiedClientResponse = response.data
     if (data.data.length === 0) {
       CidChecker.issueApplicationInfoCache.set(client, null)
@@ -343,7 +343,7 @@ export default class CidChecker {
         page
       }
       this.logger.info(params, 'Getting events for issue')
-      const response: Response = await retry(async () => await this.octokit.request('GET /repos/{owner}/{repo}/issues/{issue_number}/events', params))
+      const response: Response = await retry(async () => await this.octokit.request('GET /repos/{owner}/{repo}/issues/{issue_number}/events', params), { retries: 3 })
       events.push(...response.data)
       if (response.data.length < 100) {
         break
@@ -384,7 +384,7 @@ export default class CidChecker {
         ]
       })
       return response.data.result
-    })
+    }, { retries: 3 })
   }
 
   private static renderApprovers (approvers: Array<[string, number]>): string {
@@ -405,9 +405,20 @@ export default class CidChecker {
         page
       }
       this.logger.info(params, 'Getting comments for issue')
-      const response: Response = await retry(async () => await this.octokit.request('GET /repos/{owner}/{repo}/issues/{issue_number}/comments', params))
-      comments.push(...response.data)
-      if (response.data.length < 100) {
+      const response: Response | null = await retry(async () => {
+        try {
+          return await this.octokit.request('GET /repos/{owner}/{repo}/issues/{issue_number}/comments', params)
+        } catch (e) {
+          if ((e as any).status === 404) {
+            return null
+          }
+          throw e
+        }
+      }, { retries: 3 })
+      if (response != null) {
+        comments.push(...response.data)
+      }
+      if (response == null || response.data.length < 100) {
         break
       }
       page++
@@ -441,7 +452,7 @@ export default class CidChecker {
       const data = await retry(async () => {
         const response = await axios.get(`https://ipinfo.io/${ip}?token=${this.ipinfoToken}`)
         return response.data
-      }) as IpInfoResponse
+      }, { retries: 3 }) as IpInfoResponse
       if (data.bogon === true) {
         continue
       }
