@@ -1,14 +1,14 @@
 ## Background
 
-This report provides information on storage providers and data replication for a particular client in the Filecoin network. The report includes the following sections:
+This report provides information on storage providers and data replication for a particular client in the Filecoin network. By analyzing this information, you can better understand the health of a particular SP's storage operation.
 
-By analyzing this information, you can better understand the health of a particular SP's storage operation. The results from this report should **only be used as a guide** for analyzing a particular SP. When using this report in conjunction with the individual context of an SP, there could be a completely valid explaination that negates the SP being flagged - this should be determined on a case by case basis.
+The results from this report should **only be used as a guide** for analyzing a particular SP. When using this report in conjunction with the individual context of an SP, there could be a completely valid explaination that negates the SP being flagged in the first place. This should be determined on a case by case basis.
 
-If you have any questions or feedback for the cid-checker, you can leave a comment in [cid-tracker-tooling slack channel](https://filecoinproject.slack.com/archives/C042ZBSSGP9) or submit an issue.
+If you have any questions or feedback for the cid-checker, you can leave a comment in [cid-tracker-tooling slack channel](https://filecoinproject.slack.com/archives/C042ZBSSGP9) or **open an issue**.
 
 ## Triggering the report
 
-the report can be triggered on a specific application in the [filecoin-plus-large-datasets](https://github.com/filecoin-project/filecoin-plus-large-datasets) repo for a specific client application using the following methods:
+this report can be triggered on a specific application in the [filecoin-plus-large-datasets](https://github.com/filecoin-project/filecoin-plus-large-datasets) repo for a specific client application using the following methods:
 
 - **label trigger** - when a label of `state:Approved` is added to the github issue.
 - **manually trigger** - add a comment to an application with this tag: `checker:manualTrigger`
@@ -19,8 +19,7 @@ all assets for these reports are uploaded to [filplus-checker-assets](https://gi
 
 ## Storage Provider Distribution
 
-A table showing the distribution of storage providers that have stored data for the client, along with information on the location, total deals sealed, percentage of total deals, unique data stored, and percentage of duplicate deals for each provider. The report also includes a chart visualizing the provider distribution.
-
+A table showing the distribution of storage providers that have stored data for the client, along with information on the location, total deals sealed, percentage of total deals, unique data stored, and percentage of duplicate deals for each provider.
 ### Healthy Report
 
 ![provider-distribution](assets/provider-distribution.png?raw=true)
@@ -31,7 +30,7 @@ A table showing the distribution of storage providers that have stored data for 
 
 ## Deal Data Replication
 
-A table showing the replication of unique data across storage providers, along with information on the size of the unique data, total deals made, number of providers, and deal percentage for each data replication category. The report also includes a chart visualizing the replication distribution.
+A table showing the replication of unique data across storage providers, along with information on the size of the unique data, total deals made, number of providers, and deal percentage for each data replication category. In general, a healthy data replication chart would show higher number of data replication counts across providershe towards the right side of the x-axis (colored green). An unhealthy data replication ratio would show a large amount of data on the left side of the x-axis (colored red).
 
 ### Healthy Report
 
@@ -42,6 +41,8 @@ A table showing the replication of unique data across storage providers, along w
 ![data-replication-bad](assets/data-replication-bad.png?raw=true)
 
 ## Shared CIDs
+
+A table showing the provider breakdown and number of CIDs that have been shared across providers. CID sharing can be seen as an unhealthy activity.
 
 ### Healthy Report
 f
