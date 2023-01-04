@@ -1,8 +1,8 @@
 ## Background
 
-This report provides information on storage providers and data replication for a particular client in the Filecoin network. By analyzing this information, you can better understand the health of a particular SP's storage operation.
+This report provides information on a client's distribution and data replication of the storage providers being used.
 
-The results from this report should **only be used as a guide** for analyzing a particular SP. When using this report in conjunction with the individual context of an SP, there could be a completely valid explaination that negates the SP being flagged in the first place. This should be determined on a case by case basis.
+The results from this report should **only be used as a guide** for analyzing a particular client. When using this report in conjunction with the individual context of a client, there could be a completely valid explaination that negates the client from being flagged in the first place. This should be determined on a case by case basis.
 
 If you have any questions or feedback for the cid-checker, you can leave a comment in [cid-tracker-tooling slack channel](https://filecoinproject.slack.com/archives/C042ZBSSGP9) or **open an issue**.
 
@@ -19,7 +19,8 @@ all assets for these reports are uploaded to [filplus-checker-assets](https://gi
 
 ## Storage Provider Distribution
 
-A table showing the distribution of storage providers that have stored data for the client, along with information on the location, total deals sealed, percentage of total deals, unique data stored, and percentage of duplicate deals for each provider.
+A table showing the distribution of storage providers that have stored data for the client, along with approximate location, total deals sealed, unique data stored, and percentage of duplicate deals for each provider. Criteria for flaggable events is listed in the report itself.
+
 ### Healthy Report
 
 ![provider-distribution](assets/provider-distribution.png?raw=true)
@@ -30,7 +31,7 @@ A table showing the distribution of storage providers that have stored data for 
 
 ## Deal Data Replication
 
-A table showing the replication of unique data across storage providers, along with information on the size of the unique data, total deals made, number of providers, and deal percentage for each data replication category. In general, a healthy data replication chart would show higher number of data replication counts across providershe towards the right side of the x-axis (colored green). An unhealthy data replication ratio would show a large amount of data on the left side of the x-axis (colored red).
+A table showing the replication of unique data across storage providers, along with information on the size of the unique data, total deals made, number of providers, and deal percentage for each data replication category. In general, a healthy data replication chart would show higher number of replication counts across providers moving towards the right side of the x-axis (colored green). If there is a large amount of data that is only replicated between a smaller provider set, this is viewed as a flaggable condition.
 
 ### Healthy Report
 
@@ -42,39 +43,12 @@ A table showing the replication of unique data across storage providers, along w
 
 ## Shared CIDs
 
-A table showing the provider breakdown and number of CIDs that have been shared across providers. CID sharing can be seen as an unhealthy activity.
+A table showing the provider breakdown and number of CIDs that have been shared across providers. CID sharing can be seen as an flaggable condition.
 
 ### Healthy Report
-f
+
 ![shared-cids](assets/shared-cids.png?raw=true)
 
 ### Flagged Report
 
 ![shared-cids-bad](assets/shared-cids-bad.png?raw=true)
-
-
-## Contributing
-
-We welcome contributions to our project! If you have an idea for a new feature or have found a bug, please follow the steps below to contribute.
-
-## Submitting an Issue
-
-If you have found a bug or have an idea for a new feature, please submit an issue to our issue tracker. Be sure to include the following information:
-
-- A clear, descriptive title
-- A description of the problem or feature request
-- Steps to reproduce the issue (if applicable)
-- Expected behavior
-- Actual behavior
-- Any relevant code or error messages
-
-## Submitting a Pull Request
-
-If you would like to submit code to fix a bug or add a new feature, please do the following:
-
-1. Fork the repository and create a new branch for your change.
-2. Make your changes, including appropriate test cases.
-3. Ensure that the test suite passes.
-4. Create a pull request, including a clear description of your change and any relevant issues it addresses.
-
-We will review your pull request and may request changes before merging.
