@@ -140,7 +140,7 @@ export default class CidChecker {
 
   private getClientAddress (issue: Issue): string | undefined {
     const regexAddress = /[\n\r][ \t]*-\s*On-chain\s*address\s*for\s*first\s*allocation:[ \t]*([^\n\r]*)/m
-    const regexAddress2 = /[\n\r]*###\s*On-chain\s*address\s*for\s*first\s*allocation[\n\t]*([^\n\r]*)/
+    const regexAddress2 = /[\n\r]*###\s*On-chain\s*address\s*for\s*first\s*allocation[\r\n\t]*([^\n\r]*)/
     // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
     const address: string | undefined = matchGroupLargeNotary(regexAddress, issue.body) || matchGroupLargeNotary(regexAddress2, issue.body)
     if (address == null || address[0] !== 'f') {
