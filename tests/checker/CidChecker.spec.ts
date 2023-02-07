@@ -13,7 +13,6 @@ describe('CidChecker', () => {
   let event: IssuesLabeledEvent
 
   beforeAll(async () => {
-    await setupDatabase()
     checker = new CidChecker(testDatabase, new ProbotOctokit({ auth: {
        token: 'test-token'
       }}), fileUploadConfig, logger, process.env.IPINFO_TOKEN ?? '',['state:Granted', 'state:DataCapAllocated'])
@@ -43,12 +42,23 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
         name: 'test-repo'
       }
     }
+    await setupDatabase()
   });
 
   describe('getApplicationInfoLarge', () => {
     it('should return the client address', () => {
       const info = checker['getClientAddress'](issue)
       expect(info).toEqual('f12345')
+    })
+    it('should find the client issue - bug repro', () => {
+      const issue2 = <any>{
+        html_url: 'test-url',
+        id: 1,
+        body: '500TiB\r\n\r\n### On-chain address for first allocation\r\n\r\nf1kyaa43uqypbcsv5isyd4xw7lvgjcumfzqsxag7y\r\n\r\n### Custom multisig',
+        title: '[DataCap Application] My Company - My Project'
+      }
+      const info = checker['getClientAddress'](issue2)
+      expect(info).toEqual('f1kyaa43uqypbcsv5isyd4xw7lvgjcumfzqsxag7y')
     })
   })
 
