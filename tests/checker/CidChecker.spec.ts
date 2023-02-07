@@ -50,7 +50,7 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
       const info = checker['getClientAddress'](issue)
       expect(info).toEqual('f12345')
     })
-    fit('should find the client issue - bug repro', () => {
+    it('should find the client issue - bug repro', () => {
       const issue2 = <any>{
         html_url: 'test-url',
         id: 1,
