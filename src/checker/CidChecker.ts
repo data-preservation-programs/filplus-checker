@@ -330,17 +330,7 @@ export default class CidChecker {
 
   private async getNumberOfAllocations (issue: Issue, repo: Repository): Promise<number> {
     const comments = await this.getComments(issue.number, repo)
-    const requests = comments.filter((comment) => comment.user?.id === this.allocationBotId && comment.body?.includes('### Request number'))
-    if (requests.length === 0) {
-      return 0
-    }
-
-    const requestNumber = requests[requests.length - 1].body?.match(/### Request number: (\d+)/)?.[1]
-    if (requestNumber == null) {
-      return 0
-    }
-
-    return parseInt(requestNumber)
+    return comments.filter((comment) => comment.user?.id === this.allocationBotId && comment.body?.includes('## DataCap Allocation requested')).length
   }
 
   private async getIpFromMultiaddr (multiAddr: string): Promise<string[]> {
@@ -423,26 +413,6 @@ export default class CidChecker {
     return comments
   }
 
-  private async getAddressGroups (issueNumber: number, repo: Repository): Promise<string[]> {
-    const comments = await this.getComments(issueNumber, repo)
-    const groups = new Set<string>()
-    for (const comment of comments) {
-      if (comment.body?.startsWith('checker:addAddress') === true) {
-        const group = comment.body.split(/\s+/).slice(1)
-        group.forEach(g => groups.add(g))
-      } else if (comment.body?.startsWith('checker:removeAddress') === true) {
-        const group = comment.body.split(/\s+/).slice(1)
-        group.forEach(g => groups.delete(g))
-      }
-    }
-    for (const group of groups) {
-      if (group.match(/^[a-zA-Z0-9]+$/) == null) {
-        groups.delete(group)
-      }
-    }
-    return [...groups]
-  }
-
   private async getApprovers (issueNumber: number, repo: Repository): Promise<Array<[string, number]>> {
     const approvers = new Map<string, number>()
     const comments = await this.getComments(issueNumber, repo)
@@ -516,7 +486,7 @@ export default class CidChecker {
     logger = logger.child({ clientAddress: applicationInfo.clientAddress })
     logger.info(applicationInfo, 'Retrieved application info')
 
-    const addressGroup = await this.getAddressGroups(issue.number, repository)
+    const addressGroup: string[] = []
     if (!addressGroup.includes(applicationInfo.clientAddress)) {
       addressGroup.push(applicationInfo.clientAddress)
     }
@@ -739,8 +709,8 @@ export default class CidChecker {
 
     content.push('')
     content.push('[^1]: To manually trigger this report, add a comment with text `checker:manualTrigger`')
-    content.push('[^2]: To remove other addresses associated with this dataset for future reports, add a comment with text `checker:removeAddress <address1> <address2> ...`')
-    content.push('[^3]: To add other addresses associated with this dataset for future reports, add a comment with text `checker:addAddress <address1> <address2> ...`')
+    content.push('[^2]: This report uses client addresses from other LDN because they are specified in `checker:manualTrigger`')
+    content.push('[^3]: To add other addresses associated with this dataset for future reports, use below trigger `checker:manualTrigger <other_address1> <other_address2> ...`')
     content.push('')
     const joinedContent = content.join('\n')
     return await this.uploadReport(joinedContent, event)
