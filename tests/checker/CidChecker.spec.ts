@@ -15,7 +15,7 @@ describe('CidChecker', () => {
   beforeAll(async () => {
     checker = new CidChecker(testDatabase, new ProbotOctokit({ auth: {
        token: 'test-token'
-      }}), fileUploadConfig, logger, process.env.IPINFO_TOKEN ?? '',['state:Granted', 'state:DataCapAllocated'])
+      }}), fileUploadConfig, logger, process.env.IPINFO_TOKEN ?? '',1)
     issue = <any>{
       html_url: 'test-url',
       id: 1,
@@ -64,7 +64,7 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
 
   describe('getCidSharing', () => {
     it('should return the correct cid sharing', async () => {
-      const sharing = await checker['getCidSharing']('f12345')
+      const sharing = await checker['getCidSharing'](['f12345'])
       expect(sharing).toEqual([
         {
           total_deal_size: '200',
@@ -82,7 +82,7 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
 
   describe('getReplicationDistribution', () => {
     it('should return the replication distribution', async () => {
-      const result = await checker['getReplicationDistribution']('f12345')
+      const result = await checker['getReplicationDistribution'](['f12345'])
       expect(result).toEqual([
           {
             total_deal_size: '700',
@@ -103,7 +103,7 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
 
   describe('getStorageProviderDistribution', () => {
     it('should return the storage provider distribution', async () => {
-      const result = await checker['getStorageProviderDistribution']('f12345')
+      const result = await checker['getStorageProviderDistribution'](['f12345'])
       expect(result).toEqual([
         {
           provider: 'provider0',
@@ -254,14 +254,19 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
       issue3.title = issue3.title.replace('My Project', 'My Project3')
 
       const mock1 = nock("https://api.github.com")
-        .get(uri => uri.includes("events"))
-        .reply(200, [{event: 'labeled', label: { name: 'state:Granted'}}])
         .get(uri => uri.includes("comments"))
-        .reply(200, [{body: '## Request Approved', user: { login: 'user1' }}])
+        .reply(200, [{body: '## Request Approved', user: { login: 'user1' }},
+          {body: '## Request Approved', user: { login: 'user2' }},
+          {body: '## Request Approved', user: { login: 'user3' }},
+          {body: '## DataCap Allocation requested', user: { login: 'bot', id: 1 }}])
         .get(uri => uri.includes("comments"))
-        .reply(200, [{body: '## Request Approved', user: { login: 'user2' }}])
+        .reply(200, [{body: '## Request Approved', user: { login: 'usera' }},
+          {body: '## Request Approved', user: { login: 'userb' }},
+          {body: '## Request Approved', user: { login: 'userc' }}])
         .get(uri => uri.includes("comments"))
-        .reply(200, [{body: '## Request Approved', user: { login: 'user3' }}])
+        .reply(200, [{body: '## Request Approved', user: { login: 'userx' }},
+          {body: '## Request Approved', user: { login: 'usery' }},
+          {body: '## Request Approved', user: { login: 'userz' }}])
         .put(uri => uri.includes("/repos/test-owner/test-repo/contents"))
         .reply(201, {content: { "download_url": "./provider.png" }})
         .put(uri => uri.includes("/repos/test-owner/test-repo/contents"))
