@@ -15,7 +15,7 @@ describe('CidChecker', () => {
   beforeAll(async () => {
     checker = new CidChecker(testDatabase, new ProbotOctokit({ auth: {
        token: 'test-token'
-      }}), fileUploadConfig, logger, process.env.IPINFO_TOKEN ?? '',['state:Granted', 'state:DataCapAllocated'])
+      }}), fileUploadConfig, logger, process.env.IPINFO_TOKEN ?? '',1)
     issue = <any>{
       html_url: 'test-url',
       id: 1,
@@ -64,7 +64,7 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
 
   describe('getCidSharing', () => {
     it('should return the correct cid sharing', async () => {
-      const sharing = await checker['getCidSharing']('f12345')
+      const sharing = await checker['getCidSharing'](['f12345'])
       expect(sharing).toEqual([
         {
           total_deal_size: '200',
@@ -82,7 +82,7 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
 
   describe('getReplicationDistribution', () => {
     it('should return the replication distribution', async () => {
-      const result = await checker['getReplicationDistribution']('f12345')
+      const result = await checker['getReplicationDistribution'](['f12345'])
       expect(result).toEqual([
           {
             total_deal_size: '700',
@@ -103,7 +103,7 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
 
   describe('getStorageProviderDistribution', () => {
     it('should return the storage provider distribution', async () => {
-      const result = await checker['getStorageProviderDistribution']('f12345')
+      const result = await checker['getStorageProviderDistribution'](['f12345'])
       expect(result).toEqual([
         {
           provider: 'provider0',

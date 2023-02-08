@@ -69,7 +69,7 @@ export default class CidChecker {
                                    MIN(piece_size) AS piece_size
                             FROM current_state,
                                  client_mapping
-                            WHERE client_address = $1
+                            WHERE client_address = ANY($1)
                               AND current_state.client = client_mapping.client
                               AND verified_deal = true
                               AND slash_epoch < 0
@@ -95,7 +95,7 @@ export default class CidChecker {
                                piece_cid
                         FROM current_state,
                              client_mapping
-                        WHERE client_address = $1
+                        WHERE client_address = ANY($1)
                           AND current_state.client = client_mapping.client
                           AND verified_deal = true
                           AND slash_epoch < 0
@@ -113,7 +113,7 @@ export default class CidChecker {
       WITH cids AS (SELECT DISTINCT piece_cid
                     FROM current_state,
                          client_mapping
-                    WHERE client_address = $1
+                    WHERE client_address = ANY($1)
                       AND current_state.client = client_mapping.client
                       AND current_state.verified_deal = true
                       AND verified_deal = true)
@@ -125,7 +125,7 @@ export default class CidChecker {
            client_mapping
       WHERE cids.piece_cid = current_state.piece_cid
         AND current_state.client = client_mapping.client
-        AND client_address != $1
+        AND client_address != ANY($1)
       GROUP BY client_address
       ORDER BY total_deal_size DESC`
 
@@ -135,7 +135,7 @@ export default class CidChecker {
     private readonly fileUploadConfig: FileUploadConfig,
     private readonly logger: Logger,
     private readonly ipinfoToken: string,
-    private readonly allocationLabels: string[]) {
+    private readonly allocationBotId: number) {
   }
 
   private getClientAddress (issue: Issue): string | undefined {
@@ -172,12 +172,12 @@ export default class CidChecker {
     return result
   }
 
-  private async getStorageProviderDistribution (client: string): Promise<ProviderDistribution[]> {
+  private async getStorageProviderDistribution (clients: string[]): Promise<ProviderDistribution[]> {
     const currentEpoch = CidChecker.getCurrentEpoch()
-    this.logger.info({ client, currentEpoch }, 'Getting storage provider distribution')
+    this.logger.info({ clients, currentEpoch }, 'Getting storage provider distribution')
     const queryResult = await retry(async () => await this.sql.query(
       CidChecker.ProviderDistributionQuery,
-      [client, currentEpoch]), { retries: 3 })
+      [clients, currentEpoch]), { retries: 3 })
     const distributions = queryResult.rows as ProviderDistribution[]
     const total = distributions.reduce((acc, cur) => acc + parseFloat(cur.total_deal_size), 0)
     for (const distribution of distributions) {
@@ -187,12 +187,12 @@ export default class CidChecker {
     return distributions
   }
 
-  private async getReplicationDistribution (client: string): Promise<ReplicationDistribution[]> {
+  private async getReplicationDistribution (clients: string[]): Promise<ReplicationDistribution[]> {
     const currentEpoch = CidChecker.getCurrentEpoch()
-    this.logger.info({ client, currentEpoch }, 'Getting replication distribution')
+    this.logger.info({ clients, currentEpoch }, 'Getting replication distribution')
     const queryResult = await retry(async () => await this.sql.query(
       CidChecker.ReplicaDistributionQuery,
-      [client, currentEpoch]), { retries: 3 })
+      [clients, currentEpoch]), { retries: 3 })
     const distributions = queryResult.rows as ReplicationDistribution[]
     const total = distributions.reduce((acc, cur) => acc + parseFloat(cur.total_deal_size), 0)
     for (const distribution of distributions) {
@@ -202,11 +202,11 @@ export default class CidChecker {
     return distributions
   }
 
-  private async getCidSharing (client: string): Promise<CidSharing[]> {
-    this.logger.info({ client }, 'Getting cid sharing')
+  private async getCidSharing (clients: string[]): Promise<CidSharing[]> {
+    this.logger.info({ clients }, 'Getting cid sharing')
     const queryResult = await retry(async () => await this.sql.query(
       CidChecker.CidSharingQuery,
-      [client]), { retries: 3 })
+      [clients]), { retries: 3 })
     const sharing = queryResult.rows as CidSharing[]
     this.logger.debug({ sharing }, 'Got cid sharing')
     return sharing
@@ -329,29 +329,18 @@ export default class CidChecker {
   }
 
   private async getNumberOfAllocations (issue: Issue, repo: Repository): Promise<number> {
-    type Params = RestEndpointMethodTypes['issues']['listEvents']['parameters']
-    type Response = RestEndpointMethodTypes['issues']['listEvents']['response']
-    let page = 1
-    const events = []
-    while (true) {
-      const params: Params = {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        owner: repo.owner.login,
-        repo: repo.name,
-        issue_number: issue.number,
-        per_page: 100,
-        page
-      }
-      this.logger.info(params, 'Getting events for issue')
-      const response: Response = await retry(async () => await this.octokit.request('GET /repos/{owner}/{repo}/issues/{issue_number}/events', params), { retries: 3 })
-      events.push(...response.data)
-      if (response.data.length < 100) {
-        break
-      }
-      page++
+    const comments = await this.getComments(issue.number, repo)
+    const requests = comments.filter((comment) => comment.user?.id === this.allocationBotId && comment.body?.includes('### Request number'))
+    if (requests.length === 0) {
+      return 0
     }
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion,@typescript-eslint/no-non-null-asserted-optional-chain
-    return events.filter(event => event.event === 'labeled' && this.allocationLabels.includes(event.label?.name!)).length
+
+    const requestNumber = requests[requests.length - 1].body?.match(/### Request number: (\d+)/)?.[1]
+    if (requestNumber == null) {
+      return 0
+    }
+
+    return parseInt(requestNumber)
   }
 
   private async getIpFromMultiaddr (multiAddr: string): Promise<string[]> {
@@ -391,7 +380,13 @@ export default class CidChecker {
     return approvers.map(([name, count]) => `${wrapInCode(count.toString())}${name}`).join('<br/>')
   }
 
-  private async getApprovers (issueNumber: number, repo: Repository): Promise<Array<[string, number]>> {
+  private static readonly commentsCache = new Map<number, Array<{ body?: string, user: { login: string | undefined, id: number } | undefined | null }>>()
+
+  private async getComments (issueNumber: number, repo: Repository): Promise<Array<{ body?: string, user: { login: string | undefined, id: number } | undefined | null }>> {
+    if (CidChecker.commentsCache.has(issueNumber)) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      return CidChecker.commentsCache.get(issueNumber)!
+    }
     type Params = RestEndpointMethodTypes['issues']['listComments']['parameters']
     type Response = RestEndpointMethodTypes['issues']['listComments']['response']
     let page = 1
@@ -424,7 +419,33 @@ export default class CidChecker {
       page++
     }
 
+    CidChecker.commentsCache.set(issueNumber, comments)
+    return comments
+  }
+
+  private async getAddressGroups (issueNumber: number, repo: Repository): Promise<string[]> {
+    const comments = await this.getComments(issueNumber, repo)
+    const groups = new Set<string>()
+    for (const comment of comments) {
+      if (comment.body?.startsWith('checker:addAddress') === true) {
+        const group = comment.body.split(/\s+/).slice(1)
+        group.forEach(g => groups.add(g))
+      } else if (comment.body?.startsWith('checker:removeAddress') === true) {
+        const group = comment.body.split(/\s+/).slice(1)
+        group.forEach(g => groups.delete(g))
+      }
+    }
+    for (const group of groups) {
+      if (group.match(/^[a-zA-Z0-9]+$/) == null) {
+        groups.delete(group)
+      }
+    }
+    return [...groups]
+  }
+
+  private async getApprovers (issueNumber: number, repo: Repository): Promise<Array<[string, number]>> {
     const approvers = new Map<string, number>()
+    const comments = await this.getComments(issueNumber, repo)
     for (const comment of comments) {
       if (comment.body?.startsWith('## Request Approved') === true ||
         comment.body?.startsWith('## Request Proposed') === true) {
@@ -494,10 +515,17 @@ export default class CidChecker {
     }
     logger = logger.child({ clientAddress: applicationInfo.clientAddress })
     logger.info(applicationInfo, 'Retrieved application info')
+
+    const addressGroup = await this.getAddressGroups(issue.number, repository)
+    if (!addressGroup.includes(applicationInfo.clientAddress)) {
+      addressGroup.push(applicationInfo.clientAddress)
+    }
+    logger.info({ groups: addressGroup }, 'Retrieved address groups')
+
     const criteria = criterias.length > allocations - 1 ? criterias[allocations - 1] : criterias[criterias.length - 1]
 
     const [providerDistributions, replicationDistributions, cidSharing] = await Promise.all([(async () => {
-      const result = await this.getStorageProviderDistribution(applicationInfo.clientAddress)
+      const result = await this.getStorageProviderDistribution(addressGroup)
       const providers = result.map(r => r.provider)
       if (providers.length === 0) {
         return []
@@ -506,13 +534,13 @@ export default class CidChecker {
       const withLocations: ProviderDistributionWithLocation[] = []
       for (const item of result) {
         const location = await this.getLocation(item.provider)
-        const isNew = firstClientByProvider.get(item.provider) === applicationInfo.clientAddress
+        const isNew = addressGroup.includes(firstClientByProvider.get(item.provider) ?? '')
         withLocations.push({ ...item, ...location, new: isNew })
       }
       return withLocations.sort((a, b) => a.orgName?.localeCompare(b.orgName ?? '') ?? 0)
     })(),
-    this.getReplicationDistribution(applicationInfo.clientAddress),
-    this.getCidSharing(applicationInfo.clientAddress)
+    this.getReplicationDistribution(addressGroup),
+    this.getCidSharing(addressGroup)
     ])
 
     if (providerDistributions.length === 0) {
@@ -585,6 +613,15 @@ export default class CidChecker {
     content.push('### Approvers')
     content.push(CidChecker.renderApprovers(await this.getApprovers(issue.number, repository)))
     content.push('')
+    if (addressGroup.length > 1) {
+      content.push('### Other Addresses[^2]')
+      for (const address of addressGroup) {
+        if (address !== applicationInfo.clientAddress) {
+          content.push(` - ${wrapInCode(address)}: ${CidChecker.linkifyAddress(address)}`)
+          content.push('')
+        }
+      }
+    }
     content.push('### Storage Provider Distribution')
     content.push('The below table shows the distribution of storage providers that have stored data for this client.')
     content.push('')
@@ -677,7 +714,7 @@ export default class CidChecker {
     content.push('')
 
     content.push(`![Replication Distribution](${replicationDistributionImageUrl})`)
-    content.push('### Deal Data Shared with other Clients')
+    content.push('### Deal Data Shared with other Clients[^3]')
     content.push('The below table shows how many unique data are shared with other clients.')
     content.push('Usually different applications owns different data and should not resolve to the same CID.')
     content.push('')
@@ -702,6 +739,8 @@ export default class CidChecker {
 
     content.push('')
     content.push('[^1]: To manually trigger this report, add a comment with text `checker:manualTrigger`')
+    content.push('[^2]: To remove other addresses associated with this dataset for future reports, add a comment with text `checker:removeAddress <address1> <address2> ...`')
+    content.push('[^3]: To add other addresses associated with this dataset for future reports, add a comment with text `checker:addAddress <address1> <address2> ...`')
     content.push('')
     const joinedContent = content.join('\n')
     return await this.uploadReport(joinedContent, event)

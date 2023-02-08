@@ -14,9 +14,9 @@ export function getCidChecker (logger: Logger): CidChecker {
     throw new Error('IPINFO_TOKEN, UPLOAD_TOKEN, UPLOAD_REPO_OWNER, UPLOAD_REPO_NAME, UPLOAD_REPO_COMMITTER_NAME, UPLOAD_REPO_COMMITTER_EMAIL must be defined')
   }
 
-  const allocationLabels = process.env.ALLOCATION_LABELS?.split(',') ?? []
-  if (allocationLabels.length === 0) {
-    throw new Error('ALLOCATION_LABELS must be defined')
+  const allocationBotId = parseInt(process.env.ALLOCATION_BOT_ID ?? '0')
+  if (allocationBotId <= 0 || isNaN(allocationBotId)) {
+    throw new Error('ALLOCATION_BOT_ID must be defined')
   }
 
   const fileUploadConfig: FileUploadConfig = {
@@ -40,6 +40,6 @@ export function getCidChecker (logger: Logger): CidChecker {
     fileUploadConfig,
     logger,
     process.env.IPINFO_TOKEN,
-    allocationLabels
+    allocationBotId
   )
 }
