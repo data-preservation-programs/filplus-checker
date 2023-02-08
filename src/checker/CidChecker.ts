@@ -584,7 +584,7 @@ export default class CidChecker {
     content.push(CidChecker.renderApprovers(await this.getApprovers(issue.number, repository)))
     content.push('')
     if (addressGroup.length > 1) {
-      content.push('### Other Addresses[^2]')
+      content.push('### Other Addresses')
       for (const address of addressGroup) {
         if (address !== applicationInfo.clientAddress) {
           content.push(` - ${wrapInCode(address)}: ${CidChecker.linkifyAddress(address)}`)
@@ -684,7 +684,7 @@ export default class CidChecker {
     content.push('')
 
     content.push(`![Replication Distribution](${replicationDistributionImageUrl})`)
-    content.push('### Deal Data Shared with other Clients[^3]')
+    content.push('### Deal Data Shared with other Clients')
     content.push('The below table shows how many unique data are shared with other clients.')
     content.push('Usually different applications owns different data and should not resolve to the same CID.')
     content.push('')
@@ -709,8 +709,6 @@ export default class CidChecker {
 
     content.push('')
     content.push('[^1]: To manually trigger this report, add a comment with text `checker:manualTrigger`')
-    content.push('[^2]: This report uses client addresses from other LDN because they are specified in `checker:manualTrigger`')
-    content.push('[^3]: To add other addresses associated with this dataset for future reports, use below trigger `checker:manualTrigger <other_address1> <other_address2> ...`')
     content.push('')
     const joinedContent = content.join('\n')
     return await this.uploadReport(joinedContent, event)
