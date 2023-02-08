@@ -47,7 +47,7 @@ The below table shows how each many unique data are replicated across storage pr
 |         100.00 B |         300.00 B |                   3 |          30.00% |
 
 ![Replication Distribution](./replica.png)
-### Deal Data Shared with other Clients[^3]
+### Deal Data Shared with other Clients
 The below table shows how many unique data are shared with other clients.
 Usually different applications owns different data and should not resolve to the same CID.
 
@@ -61,5 +61,3 @@ However, this could be possible if all below clients use same software to prepar
 | [fxxxx2](https://filfox.info/en/address/fxxxx2) | [org3](url3) |             100.00 B |           1 | `1`userx<br/>`1`usery<br/>`1`userz |
 
 [^1]: To manually trigger this report, add a comment with text `checker:manualTrigger`
-[^2]: This report uses client addresses from other LDN because they are specified in `checker:manualTrigger`
-[^3]: To add other addresses associated with this dataset for future reports, use below trigger `checker:manualTrigger <other_address1> <other_address2> ...`
