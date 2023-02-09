@@ -7,6 +7,7 @@ import * as dotenv from 'dotenv'
 export async function manualTrigger (event: APIGatewayProxyEventV2, _: Context): Promise<APIGatewayProxyResult> {
   dotenv.config()
   const issueId = event.queryStringParameters?.issueId
+  const otherAddresses: string[] = event.queryStringParameters?.otherAddresses?.split(' ') ?? []
   if (issueId === undefined) {
     return {
       statusCode: 400,
@@ -42,7 +43,12 @@ export async function manualTrigger (event: APIGatewayProxyEventV2, _: Context):
       name: 'filecoin-plus-large-datasets',
       full_name: 'filecoin-project/filecoin-plus-large-datasets'
     }
-  } as any)
+  } as any, [{
+    maxProviderDealPercentage: 0.25,
+    maxDuplicationPercentage: 0.20,
+    maxPercentageForLowReplica: 0.25,
+    lowReplicaThreshold: 3
+  }], otherAddresses)
 
   return {
     statusCode: 200,

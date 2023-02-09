@@ -11,7 +11,8 @@ If you have any questions or feedback for the cid-checker, you can leave a comme
 this report can be triggered on a specific application in the [filecoin-plus-large-datasets](https://github.com/filecoin-project/filecoin-plus-large-datasets) repo for a specific client application using the following methods:
 
 - **label trigger** - when a label of `state:Approved` is added to the github issue.
-- **manually trigger** - add a comment to an application with this tag: `checker:manualTrigger`
+- **manually trigger** - add a comment to an application with this text: `checker:manualTrigger`
+- **combine with other addresses** - add a comment to an application with this text: `checker:manualTrigger <other_address_1> <other_address_2> ...`. This is useful if those addresses belong to the same series of LDN applications.
 
 # Report Breakdown
 

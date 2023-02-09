@@ -125,7 +125,7 @@ export default class CidChecker {
            client_mapping
       WHERE cids.piece_cid = current_state.piece_cid
         AND current_state.client = client_mapping.client
-        AND client_address != ANY($1)
+        AND NOT (client_address = ANY($1))
       GROUP BY client_address
       ORDER BY total_deal_size DESC`
 
@@ -465,7 +465,7 @@ export default class CidChecker {
     maxDuplicationPercentage: 0.20,
     maxPercentageForLowReplica: 0.25,
     lowReplicaThreshold: 3
-  }]): Promise<string | undefined> {
+  }], otherAddresses: string[] = []): Promise<string | undefined> {
     const { issue, repository } = event
     let logger = this.logger.child({ issueNumber: issue.number })
     logger.info('Checking issue')
@@ -486,7 +486,7 @@ export default class CidChecker {
     logger = logger.child({ clientAddress: applicationInfo.clientAddress })
     logger.info(applicationInfo, 'Retrieved application info')
 
-    const addressGroup: string[] = []
+    const addressGroup = otherAddresses
     if (!addressGroup.includes(applicationInfo.clientAddress)) {
       addressGroup.push(applicationInfo.clientAddress)
     }
@@ -584,10 +584,11 @@ export default class CidChecker {
     content.push(CidChecker.renderApprovers(await this.getApprovers(issue.number, repository)))
     content.push('')
     if (addressGroup.length > 1) {
-      content.push('### Other Addresses')
+      content.push('### Other Addresses[^2]')
       for (const address of addressGroup) {
         if (address !== applicationInfo.clientAddress) {
-          content.push(` - ${wrapInCode(address)}: ${CidChecker.linkifyAddress(address)}`)
+          const otherApplication = await this.findApplicationInfoForClient(address)
+          content.push(` - ${CidChecker.linkifyAddress(address)} - ${CidChecker.linkifyApplicationInfo(otherApplication)}`)
           content.push('')
         }
       }
@@ -688,7 +689,7 @@ export default class CidChecker {
     content.push('The below table shows how many unique data are shared with other clients.')
     content.push('Usually different applications owns different data and should not resolve to the same CID.')
     content.push('')
-    content.push('However, this could be possible if all below clients use same software to prepare for the exact same dataset or they belong to a series of LDN applications for the same dataset.')
+    content.push('However, this could be possible if all below clients use same software to prepare for the exact same dataset or they belong to a series of LDN applications for the same dataset.[^3]')
     content.push('')
     if (cidSharingRows.length > 0) {
       for (const row of cidSharingRows) {
@@ -709,6 +710,10 @@ export default class CidChecker {
 
     content.push('')
     content.push('[^1]: To manually trigger this report, add a comment with text `checker:manualTrigger`')
+    content.push('')
+    content.push('[^2]: Deals from those addresses are combined into this report as they are specified with `checker:manualTrigger`')
+    content.push('')
+    content.push('[^3]: To manually trigger this report with deals from other related addresses, add a comment with text `checker:manualTrigger <other_address_1> <other_address_2> ...`')
     content.push('')
     const joinedContent = content.join('\n')
     return await this.uploadReport(joinedContent, event)
