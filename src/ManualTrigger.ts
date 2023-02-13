@@ -34,7 +34,7 @@ export async function manualTrigger (event: APIGatewayProxyEventV2, _: Context):
       body: 'Error fetching issue ' + issueId
     }
   }
-  await cidchecker.check({
+  const result = await cidchecker.check({
     issue: response.data,
     repository: {
       owner: {
@@ -52,6 +52,6 @@ export async function manualTrigger (event: APIGatewayProxyEventV2, _: Context):
 
   return {
     statusCode: 200,
-    body: ''
+    body: result[0]
   }
 }

@@ -1,18 +1,18 @@
 import {manualTrigger} from "../src/ManualTrigger";
+import * as fs from 'fs';
 
 xdescribe('manualTrigger', () => {
   jasmine.DEFAULT_TIMEOUT_INTERVAL = 86400000
   it('should trigger the check', async () => {
-    const i = 339
+    const i = 1126
     console.log(`Triggering ${i}`)
     const event = {
       queryStringParameters: {
-        issueId: i.toString(),
-        otherAddresses: 'f15cps7yo2x4fosvp45opfihk3a4wg2qukmwyet7a f1pc5usvsbfgxxbq7c7quhhg6k7l6y5reiwqr3noy'
+        issueId: i.toString()
       }
     }
     const body = await manualTrigger(event as any, {} as any)
     console.log(body.statusCode)
-    console.log(`Finished ${i}`)
+    fs.writeFileSync('manual_test_report.md', body.body)
   })
 })

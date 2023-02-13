@@ -35,7 +35,7 @@ const handler: ApplicationFunction = (app: Probot, _options: ApplicationFunction
     }
     app.log({ body: result })
     const issueComment = context.issue({
-      body: result
+      body: result[0]
     })
 
     if (process.env.DRY_RUN !== 'true' && process.env.DRY_RUN !== '1') {
