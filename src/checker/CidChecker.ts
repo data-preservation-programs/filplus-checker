@@ -586,9 +586,9 @@ export default class CidChecker {
     summary.push('## DataCap and CID Checker Report Summary[^1]')
     content.push(` - Organization: ${wrapInCode(applicationInfo.organizationName)}`)
     content.push(` - Client: ${wrapInCode(applicationInfo.clientAddress)}`)
-    pushBoth('### Approvers')
-    pushBoth(CidChecker.renderApprovers(await this.getApprovers(issue.number, repository)))
-    pushBoth('')
+    content.push('### Approvers')
+    content.push(CidChecker.renderApprovers(await this.getApprovers(issue.number, repository)))
+    content.push('')
     if (addressGroup.length > 1) {
       pushBoth('### Other Addresses[^2]')
       for (const address of addressGroup) {
@@ -643,12 +643,12 @@ export default class CidChecker {
       }
     }
     if (providersExceedingMaxPercentage.length > 0) {
-      summary.push(emoji.get('warning') + ` ${providersExceedingMaxPercentage.length} storage providers exceed max percentage - ` +
+      summary.push(emoji.get('warning') + ` ${providersExceedingMaxPercentage.length} storage providers sealed more than ${(criteria.maxProviderDealPercentage * 100).toFixed(0)}% of total datacap - ` +
         providersExceedingMaxPercentage.map(([provider, percentage]) => ` ${generateLink(provider, `https://filfox.info/en/address/${provider}`)}: ${(percentage * 100).toFixed(2)}%`).join(', '))
       summary.push('')
     }
     if (providersExceedingMaxDuplication.length > 0) {
-      summary.push(emoji.get('warning') + ` ${providersExceedingMaxDuplication.length} storage providers exceed max duplication percentage - ` +
+      summary.push(emoji.get('warning') + ` ${providersExceedingMaxDuplication.length} storage providers sealed too much duplicate data - ` +
         providersExceedingMaxDuplication.map(([provider, percentage]) => ` ${generateLink(provider, `https://filfox.info/en/address/${provider}`)}: ${(percentage * 100).toFixed(2)}%`).join(', '))
       summary.push('')
     }
@@ -680,8 +680,7 @@ export default class CidChecker {
       ]))
     pushBoth('')
     content.push(`<img src="${providerDistributionImageUrl}"/>`)
-    summary.push(`<img src="${providerDistributionImageUrl}" width="80%"/>`)
-    pushBoth('')
+    content.push('')
 
     pushBoth('### Deal Data Replication')
     content.push('The below table shows how each many unique data are replicated across storage providers.')
@@ -726,7 +725,8 @@ export default class CidChecker {
       for (const row of cidSharingRows) {
         logger.info({ otherClientAddress: row.otherClientAddress }, 'CID is shared with another client')
       }
-      pushBoth(emoji.get('warning') + ' CID sharing has been observed.')
+      content.push(emoji.get('warning') + ' CID sharing has been observed.')
+      summary.push(emoji.get('warning') + ' CID sharing has been observed. (Top 3)')
       pushBoth('')
       content.push(generateGfmTable(cidSharingRows, [
         ['otherClientAddress', { name: 'Other Client', align: 'l' }],
@@ -735,7 +735,7 @@ export default class CidChecker {
         ['uniqueCidCount', { name: 'Unique CIDs', align: 'r' }],
         ['verifier', { name: 'Approvers', align: 'l' }]
       ]))
-      for (const row of cidSharingRows) {
+      for (const row of cidSharingRows.slice(0, 3)) {
         summary.push(`- ${row.totalDealSize} - ${row.otherClientAddress} - ${row.otherClientOrganizationName}`)
       }
     } else {

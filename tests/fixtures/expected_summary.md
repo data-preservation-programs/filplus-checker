@@ -1,26 +1,21 @@
 ## DataCap and CID Checker Report Summary[^1]
-### Approvers
-`1`user1<br/>`1`user2<br/>`1`user3
-
 ### Other Addresses[^2]
  - [fxxxx2](https://filfox.info/en/address/fxxxx2) - [org3](url3)
 
 ### Storage Provider Distribution
-⚠️ 1 storage providers exceed max percentage -  [provider0](https://filfox.info/en/address/provider0): 36.36%
+⚠️ 1 storage providers sealed more than 25% of total datacap -  [provider0](https://filfox.info/en/address/provider0): 36.36%
 
-⚠️ 2 storage providers exceed max duplication percentage -  [provider0](https://filfox.info/en/address/provider0): 75.00%,  [provider5](https://filfox.info/en/address/provider5): 50.00%
+⚠️ 2 storage providers sealed too much duplicate data -  [provider0](https://filfox.info/en/address/provider0): 75.00%,  [provider5](https://filfox.info/en/address/provider5): 50.00%
 
 ⚠️ 3 storage providers have unknown IP location -  [provider0](https://filfox.info/en/address/provider0),  [provider5](https://filfox.info/en/address/provider5),  [provider1](https://filfox.info/en/address/provider1)
 
-
-<img src="./provider.png" width="80%"/>
 
 ### Deal Data Replication
 ⚠️ 63.64% of deals are for data replicated across less than 4 storage providers.
 
 
 ### Deal Data Shared with other Clients[^3]
-⚠️ CID sharing has been observed.
+⚠️ CID sharing has been observed. (Top 3)
 
 - 200.00 B - [fxxxx3](https://filfox.info/en/address/fxxxx3) - [org2](url2)
 
