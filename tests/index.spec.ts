@@ -35,7 +35,7 @@ describe('checkerApp', () => {
       })
       .reply(200);
 
-    const mockChecker = jasmine.createSpyObj('CidChecker', { check: Promise.resolve('test-content') });
+    const mockChecker = jasmine.createSpyObj('CidChecker', { check: Promise.resolve(['test-summary', 'test-content']) });
     spyOn(dependency, 'getCidChecker').and.returnValue(mockChecker)
     process.env.TARGET_LABEL = 'bot:readyToSign'
     process.env.CRITERIA = '[{"lowReplicaThreshold": 1, "maxDuplicationPercentage": 1, "maxProviderDealPercentage": 1, "maxPercentageForLowReplica": 1}]'
@@ -45,7 +45,7 @@ describe('checkerApp', () => {
       console.error(mock.pendingMocks())
     }
     expect(mock.isDone()).toBeTruthy();
-    expect(newComment).toEqual('test-content');
+    expect(newComment).toEqual('test-summary');
   })
 
   afterEach(() => {

@@ -212,7 +212,7 @@ export default class CidChecker {
     return sharing
   }
 
-  private async uploadFile (path: string, base64Content: string, commitMessage: string): Promise<string> {
+  private async uploadFile (path: string, base64Content: string, commitMessage: string): Promise<[download_url: string, html_url: string]> {
     const { owner, repo } = this.fileUploadConfig
     type Params = RestEndpointMethodTypes['repos']['createOrUpdateFileContents']['parameters']
     type Response = RestEndpointMethodTypes['repos']['createOrUpdateFileContents']['response']
@@ -233,7 +233,7 @@ export default class CidChecker {
 
     this.logger.info({ owner: params.owner, repo: params.repo, path: params.path, message: params.message }, 'Uploaded file')
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    return response.data.content!.download_url!
+    return [response.data.content!.download_url!, response.data.content!.html_url!]
   }
 
   private getImageForReplicationDistribution (replicationDistributions: ReplicationDistribution[], colorThreshold: number): string {
@@ -465,7 +465,7 @@ export default class CidChecker {
     maxDuplicationPercentage: 0.20,
     maxPercentageForLowReplica: 0.25,
     lowReplicaThreshold: 3
-  }], otherAddresses: string[] = []): Promise<string | undefined> {
+  }], otherAddresses: string[] = []): Promise<[summary: string, content: string | undefined]> {
     const { issue, repository } = event
     let logger = this.logger.child({ issueNumber: issue.number })
     logger.info('Checking issue')
@@ -473,15 +473,15 @@ export default class CidChecker {
     const isEarlyAllocation = criterias.length > allocations
     logger.info({ allocations }, 'Retrieved number of previous allocations')
     if (allocations === 0) {
-      return await this.uploadReport(CidChecker.getErrorContent('There is no previous allocation for this issue.'), event)
+      return [await this.uploadReport(CidChecker.getErrorContent('There is no previous allocation for this issue.'), event), undefined]
     }
     const address = this.getClientAddress(issue)
     if (address == null) {
-      return await this.uploadReport(CidChecker.getErrorContent('No client address found for this issue.'), event)
+      return [await this.uploadReport(CidChecker.getErrorContent('No client address found for this issue.'), event), undefined]
     }
     const applicationInfo = await this.findApplicationInfoForClient(address)
     if (applicationInfo == null) {
-      return await this.uploadReport(CidChecker.getErrorContent('No application info found for this issue on https://filplus.d.interplanetary.one/clients.'), event)
+      return [await this.uploadReport(CidChecker.getErrorContent('No application info found for this issue on https://filplus.d.interplanetary.one/clients.'), event), undefined]
     }
     logger = logger.child({ clientAddress: applicationInfo.clientAddress })
     logger.info(applicationInfo, 'Retrieved application info')
@@ -514,7 +514,7 @@ export default class CidChecker {
     ])
 
     if (providerDistributions.length === 0) {
-      return await this.uploadReport(CidChecker.getErrorContent('No active deals found for this client.'), event)
+      return [await this.uploadReport(CidChecker.getErrorContent('No active deals found for this client.'), event), undefined]
     }
 
     const providerDistributionRows: ProviderDistributionRow[] = providerDistributions.map(distribution => {
@@ -566,34 +566,40 @@ export default class CidChecker {
 
     const providerDistributionImage = this.getImageForProviderDistribution(providerDistributions)
     const replicationDistributionImage = this.getImageForReplicationDistribution(replicationDistributions, criteria.lowReplicaThreshold)
-    const providerDistributionImageUrl = await this.uploadFile(
+    const providerDistributionImageUrl = (await this.uploadFile(
       `${repository.full_name}/issues/${issue.number}/${Date.now()}.png`,
       providerDistributionImage,
-      `Upload provider distribution image for issue #${issue.number} of ${repository.full_name}`)
+      `Upload provider distribution image for issue #${issue.number} of ${repository.full_name}`))[0]
 
-    const replicationDistributionImageUrl = await this.uploadFile(
+    const replicationDistributionImageUrl = (await this.uploadFile(
       `${repository.full_name}/issues/${issue.number}/${Date.now()}.png`,
       replicationDistributionImage,
-      `Upload replication distribution image for issue #${issue.number} of ${repository.full_name}`)
+      `Upload replication distribution image for issue #${issue.number} of ${repository.full_name}`))[0]
 
     const content: string[] = []
+    const summary: string[] = []
+    const pushBoth = (str: string): void => {
+      content.push(str)
+      summary.push(str)
+    }
     content.push('## DataCap and CID Checker Report[^1]')
+    summary.push('## DataCap and CID Checker Report Summary[^1]')
     content.push(` - Organization: ${wrapInCode(applicationInfo.organizationName)}`)
     content.push(` - Client: ${wrapInCode(applicationInfo.clientAddress)}`)
     content.push('### Approvers')
     content.push(CidChecker.renderApprovers(await this.getApprovers(issue.number, repository)))
     content.push('')
     if (addressGroup.length > 1) {
-      content.push('### Other Addresses[^2]')
+      pushBoth('### Other Addresses[^2]')
       for (const address of addressGroup) {
         if (address !== applicationInfo.clientAddress) {
           const otherApplication = await this.findApplicationInfoForClient(address)
-          content.push(` - ${CidChecker.linkifyAddress(address)} - ${CidChecker.linkifyApplicationInfo(otherApplication)}`)
-          content.push('')
+          pushBoth(` - ${CidChecker.linkifyAddress(address)} - ${CidChecker.linkifyApplicationInfo(otherApplication)}`)
+          pushBoth('')
         }
       }
     }
-    content.push('### Storage Provider Distribution')
+    pushBoth('### Storage Provider Distribution')
     content.push('The below table shows the distribution of storage providers that have stored data for this client.')
     content.push('')
     content.push('If this is the first time a provider takes verified deal, it will be marked as `new`.')
@@ -609,37 +615,58 @@ export default class CidChecker {
     content.push(' - All storage providers should be located in different regions.')
     content.push('')
     let providerDistributionHealthy = true
+    const providersExceedingMaxPercentage: Array<[string, number]> = []
+    const providersExceedingMaxDuplication: Array<[string, number]> = []
+    const providersNoIp: string[] = []
     for (const provider of providerDistributions) {
       const providerLink = generateLink(provider.provider, `https://filfox.info/en/address/${provider.provider}`)
       if (provider.percentage > criteria.maxProviderDealPercentage) {
         logger.info({ provider: provider.provider, percentage: provider.percentage }, 'Provider exceeds max percentage')
         content.push(emoji.get('warning') + ` ${providerLink} has sealed ${(provider.percentage * 100).toFixed(2)}% of total datacap.`)
         content.push('')
+        providersExceedingMaxPercentage.push([provider.provider, provider.percentage])
         providerDistributionHealthy = false
       }
       if (provider.duplication_percentage > criteria.maxDuplicationPercentage) {
         logger.info({ provider: provider.provider, duplicationFactor: provider.duplication_percentage }, 'Provider exceeds max duplication percentage')
         content.push(emoji.get('warning') + ` ${(provider.duplication_percentage * 100).toFixed(2)}% of total deal sealed by ${providerLink} are duplicate data.`)
         content.push('')
+        providersExceedingMaxDuplication.push([provider.provider, provider.duplication_percentage])
         providerDistributionHealthy = false
       }
       if (provider.country == null || provider.country === '') {
         logger.info({ provider: provider.provider }, 'Provider does not have IP location')
         content.push(emoji.get('warning') + ` ${providerLink} has unknown IP location.`)
         content.push('')
+        providersNoIp.push(provider.provider)
         providerDistributionHealthy = false
       }
     }
+    if (providersExceedingMaxPercentage.length > 0) {
+      summary.push(emoji.get('warning') + ` ${providersExceedingMaxPercentage.length} storage providers sealed more than ${(criteria.maxProviderDealPercentage * 100).toFixed(0)}% of total datacap - ` +
+        providersExceedingMaxPercentage.map(([provider, percentage]) => ` ${generateLink(provider, `https://filfox.info/en/address/${provider}`)}: ${(percentage * 100).toFixed(2)}%`).join(', '))
+      summary.push('')
+    }
+    if (providersExceedingMaxDuplication.length > 0) {
+      summary.push(emoji.get('warning') + ` ${providersExceedingMaxDuplication.length} storage providers sealed too much duplicate data - ` +
+        providersExceedingMaxDuplication.map(([provider, percentage]) => ` ${generateLink(provider, `https://filfox.info/en/address/${provider}`)}: ${(percentage * 100).toFixed(2)}%`).join(', '))
+      summary.push('')
+    }
+    if (providersNoIp.length > 0) {
+      summary.push(emoji.get('warning') + ` ${providersNoIp.length} storage providers have unknown IP location - ` +
+        providersNoIp.map(provider => ` ${generateLink(provider, `https://filfox.info/en/address/${provider}`)}`).join(', '))
+      summary.push('')
+    }
     if (new Set(providerDistributionRows.map(row => row.location)).size <= 1) {
       logger.info('Client has data stored in only one region')
-      content.push(emoji.get('warning') + ' All storage providers are located in the same region.')
-      content.push('')
+      pushBoth(emoji.get('warning') + ' All storage providers are located in the same region.')
+      pushBoth('')
       providerDistributionHealthy = false
     }
 
     if (providerDistributionHealthy) {
-      content.push(emoji.get('heavy_check_mark') + ' Storage provider distribution looks healthy.')
-      content.push('')
+      pushBoth(emoji.get('heavy_check_mark') + ' Storage provider distribution looks healthy.')
+      pushBoth('')
     }
 
     content.push(generateGfmTable(providerDistributionRows,
@@ -651,11 +678,13 @@ export default class CidChecker {
         ['uniqueDataSize', { name: 'Unique Data', align: 'r' }],
         ['duplicatePercentage', { name: 'Duplicate Deals', align: 'r' }]
       ]))
+    pushBoth('')
+    content.push(`<img src="${providerDistributionImageUrl}"/>`)
     content.push('')
-    content.push(`![Provider Distribution](${providerDistributionImageUrl})`)
 
-    content.push('### Deal Data Replication')
+    pushBoth('### Deal Data Replication')
     content.push('The below table shows how each many unique data are replicated across storage providers.')
+    content.push('')
     if (criteria.maxPercentageForLowReplica < 1) {
       if (isEarlyAllocation) {
         content.push('')
@@ -670,11 +699,11 @@ export default class CidChecker {
       .reduce((a, b) => a + b, 0)
     if (lowReplicaPercentage > criteria.maxPercentageForLowReplica) {
       logger.info({ lowReplicaPercentage }, 'Low replica percentage exceeds max percentage')
-      content.push(emoji.get('warning') + ` ${(lowReplicaPercentage * 100).toFixed(2)}% of deals are for data replicated across less than ${criteria.lowReplicaThreshold + 1} storage providers.`)
-      content.push('')
+      pushBoth(emoji.get('warning') + ` ${(lowReplicaPercentage * 100).toFixed(2)}% of deals are for data replicated across less than ${criteria.lowReplicaThreshold + 1} storage providers.`)
+      pushBoth('')
     } else {
-      content.push(emoji.get('heavy_check_mark') + ' Data replication looks healthy.')
-      content.push('')
+      pushBoth(emoji.get('heavy_check_mark') + ' Data replication looks healthy.')
+      pushBoth('')
     }
     content.push(generateGfmTable(replicationDistributionRows, [
       ['uniqueDataSize', { name: 'Unique Data Size', align: 'r' }],
@@ -684,19 +713,21 @@ export default class CidChecker {
     ]))
     content.push('')
 
-    content.push(`![Replication Distribution](${replicationDistributionImageUrl})`)
-    content.push('### Deal Data Shared with other Clients')
+    content.push(`<img src="${replicationDistributionImageUrl}"/>`)
+    pushBoth('')
+    pushBoth('### Deal Data Shared with other Clients[^3]')
     content.push('The below table shows how many unique data are shared with other clients.')
     content.push('Usually different applications owns different data and should not resolve to the same CID.')
     content.push('')
-    content.push('However, this could be possible if all below clients use same software to prepare for the exact same dataset or they belong to a series of LDN applications for the same dataset.[^3]')
+    content.push('However, this could be possible if all below clients use same software to prepare for the exact same dataset or they belong to a series of LDN applications for the same dataset.')
     content.push('')
     if (cidSharingRows.length > 0) {
       for (const row of cidSharingRows) {
         logger.info({ otherClientAddress: row.otherClientAddress }, 'CID is shared with another client')
       }
       content.push(emoji.get('warning') + ' CID sharing has been observed.')
-      content.push('')
+      summary.push(emoji.get('warning') + ' CID sharing has been observed. (Top 3)')
+      pushBoth('')
       content.push(generateGfmTable(cidSharingRows, [
         ['otherClientAddress', { name: 'Other Client', align: 'l' }],
         ['otherClientOrganizationName', { name: 'Application', align: 'l' }],
@@ -704,19 +735,25 @@ export default class CidChecker {
         ['uniqueCidCount', { name: 'Unique CIDs', align: 'r' }],
         ['verifier', { name: 'Approvers', align: 'l' }]
       ]))
+      for (const row of cidSharingRows.slice(0, 3)) {
+        summary.push(`- ${row.totalDealSize} - ${row.otherClientAddress} - ${row.otherClientOrganizationName}`)
+      }
     } else {
-      content.push(emoji.get('heavy_check_mark') + ' No CID sharing has been observed.')
+      pushBoth(emoji.get('heavy_check_mark') + ' No CID sharing has been observed.')
     }
 
-    content.push('')
-    content.push('[^1]: To manually trigger this report, add a comment with text `checker:manualTrigger`')
-    content.push('')
-    content.push('[^2]: Deals from those addresses are combined into this report as they are specified with `checker:manualTrigger`')
-    content.push('')
-    content.push('[^3]: To manually trigger this report with deals from other related addresses, add a comment with text `checker:manualTrigger <other_address_1> <other_address_2> ...`')
-    content.push('')
+    pushBoth('')
+    pushBoth('[^1]: To manually trigger this report, add a comment with text `checker:manualTrigger`')
+    pushBoth('')
+    pushBoth('[^2]: Deals from those addresses are combined into this report as they are specified with `checker:manualTrigger`')
+    pushBoth('')
+    pushBoth('[^3]: To manually trigger this report with deals from other related addresses, add a comment with text `checker:manualTrigger <other_address_1> <other_address_2> ...`')
+    pushBoth('')
     const joinedContent = content.join('\n')
-    return await this.uploadReport(joinedContent, event)
+    const contentUrl = await this.uploadReport(joinedContent, event)
+    summary.push('### Full report')
+    summary.push(`Click ${generateLink('here', contentUrl)} to view the full report.`)
+    return [summary.join('\n'), joinedContent]
   }
 
   private async uploadReport (joinedContent: string, event: { issue: Issue, repository: Repository }): Promise<string> {
@@ -726,7 +763,7 @@ export default class CidChecker {
       `${repository.full_name}/issues/${issue.number}/${Date.now()}.md`,
       Buffer.from(joinedContent).toString('base64'),
       `Upload report for issue #${issue.number} of ${repository.full_name}`)
-    logger.info({ contentUrl }, 'Report content uploaded')
-    return joinedContent
+    logger.info({ contentUrl: contentUrl[1] }, 'Report content uploaded')
+    return contentUrl[1]
   }
 }

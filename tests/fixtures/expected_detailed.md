@@ -40,9 +40,11 @@ For most of the datacap application, below restrictions should apply.
 | [provider3](https://filfox.info/en/address/provider3)`new`  | city4, region4, US<br/>`Unknown` |           100.00 B |      9.09% |    100.00 B |           0.00% |
 | [provider1](https://filfox.info/en/address/provider1)`new`  |            Unknown<br/>`Unknown` |           100.00 B |      9.09% |    100.00 B |           0.00% |
 
-![Provider Distribution](./provider.png)
+<img src="./provider.png"/>
+
 ### Deal Data Replication
 The below table shows how each many unique data are replicated across storage providers.
+
 - No more than 25% of unique data are stored with less than 4 providers.
 
 ⚠️ 63.64% of deals are for data replicated across less than 4 storage providers.
@@ -52,12 +54,13 @@ The below table shows how each many unique data are replicated across storage pr
 |         300.00 B |         700.00 B |                   1 |          63.64% |
 |         100.00 B |         400.00 B |                   4 |          36.36% |
 
-![Replication Distribution](./replica.png)
-### Deal Data Shared with other Clients
+<img src="./replica.png"/>
+
+### Deal Data Shared with other Clients[^3]
 The below table shows how many unique data are shared with other clients.
 Usually different applications owns different data and should not resolve to the same CID.
 
-However, this could be possible if all below clients use same software to prepare for the exact same dataset or they belong to a series of LDN applications for the same dataset.[^3]
+However, this could be possible if all below clients use same software to prepare for the exact same dataset or they belong to a series of LDN applications for the same dataset.
 
 ⚠️ CID sharing has been observed.
 
