@@ -190,7 +190,7 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
       nock.disableNetConnect();
     })
     it('should return the application info', async () => {
-      const mock1 = nock("https://api.filplus.d.interplanetary.one")
+      const mock1 = nock("https://api.datacapstats.io")
         .get(_ => true)
         .reply(200, {
           "count":"2","data":[

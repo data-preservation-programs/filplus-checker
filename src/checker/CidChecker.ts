@@ -297,7 +297,7 @@ export default class CidChecker {
     }
     this.logger.info({ client }, 'Finding application info for client')
     const response = await retry(async () => await axios.get(
-      `https://api.filplus.d.interplanetary.one/api/getVerifiedClients?limit=10&page=1&filter=${client}`), { retries: 6 })
+      `https://api.datacapstats.io/api/getVerifiedClients?limit=10&page=1&filter=${client}`), { retries: 6 })
     const data: GetVerifiedClientResponse = response.data
     if (data.data.length === 0) {
       CidChecker.issueApplicationInfoCache.set(client, null)
