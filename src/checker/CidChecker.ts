@@ -473,15 +473,15 @@ export default class CidChecker {
     const isEarlyAllocation = criterias.length > allocations
     logger.info({ allocations }, 'Retrieved number of previous allocations')
     if (allocations === 0) {
-      return [await this.uploadReport(CidChecker.getErrorContent('There is no previous allocation for this issue.'), event), undefined]
+      return [CidChecker.getErrorContent('There is no previous allocation for this issue.'), undefined]
     }
     const address = this.getClientAddress(issue)
     if (address == null) {
-      return [await this.uploadReport(CidChecker.getErrorContent('No client address found for this issue.'), event), undefined]
+      return [CidChecker.getErrorContent('No client address found for this issue.'), undefined]
     }
     const applicationInfo = await this.findApplicationInfoForClient(address)
     if (applicationInfo == null) {
-      return [await this.uploadReport(CidChecker.getErrorContent('No application info found for this issue on https://filplus.d.interplanetary.one/clients.'), event), undefined]
+      return [CidChecker.getErrorContent('No application info found for this issue on https://filplus.d.interplanetary.one/clients.'), undefined]
     }
     logger = logger.child({ clientAddress: applicationInfo.clientAddress })
     logger.info(applicationInfo, 'Retrieved application info')
@@ -514,7 +514,7 @@ export default class CidChecker {
     ])
 
     if (providerDistributions.length === 0) {
-      return [await this.uploadReport(CidChecker.getErrorContent('No active deals found for this client.'), event), undefined]
+      return [CidChecker.getErrorContent('No active deals found for this client.'), undefined]
     }
 
     const providerDistributionRows: ProviderDistributionRow[] = providerDistributions.map(distribution => {
