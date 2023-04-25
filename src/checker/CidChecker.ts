@@ -435,8 +435,13 @@ export default class CidChecker {
     const ips: string[] = []
     for (const multiAddr of minerInfo.Multiaddrs) {
       this.logger.info({ multiAddr }, 'Getting IP from multiaddr')
-      const ip = await this.getIpFromMultiaddr(multiAddr)
-      ips.push(...ip)
+      try {
+        const ip = await this.getIpFromMultiaddr(multiAddr)
+        ips.push(...ip)
+      } catch (e) {
+        this.logger.warn({ multiAddr, e }, 'Failed to get IP from multiaddr')
+        return null
+      }
     }
     for (const ip of ips) {
       this.logger.info({ ip }, 'Getting location for IP')

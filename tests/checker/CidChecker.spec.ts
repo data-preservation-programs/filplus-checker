@@ -157,6 +157,12 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
       const address = checker['getIpFromMultiaddr'](multiaddr);
       expect(await address).toEqual(['1.1.1.1']);
     })
+
+    xit('should work for special miner', async() => {
+      const multiaddr = 'BGvR+oM=';
+      const address = checker['getIpFromMultiaddr'](multiaddr);
+      console.log(address)
+    })
   })
 
   describe('getMinerInfo', () => {
