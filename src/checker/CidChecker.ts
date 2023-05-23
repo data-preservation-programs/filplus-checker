@@ -28,7 +28,7 @@ import { Multiaddr } from 'multiaddr'
 import BarChart, { BarChartEntry } from '../charts/BarChart'
 import GeoMap, { GeoMapEntry } from '../charts/GeoMap'
 import { Chart, LegendOptions } from 'chart.js'
-import { matchGroupLargeNotary } from '../../dep/filecoin-verifier-tools/utils/common-utils'
+import { ldnParser } from '@keyko-io/filecoin-verifier-tools'
 
 const RED = 'rgba(255, 99, 132)'
 const GREEN = 'rgba(75, 192, 192)'
@@ -139,10 +139,7 @@ export default class CidChecker {
   }
 
   private getClientAddress (issue: Issue): string | undefined {
-    const regexAddress = /[\n\r][ \t]*-\s*On-chain\s*address\s*for\s*first\s*allocation:[ \t]*([^\n\r]*)/m
-    const regexAddress2 = /[\n\r]*###\s*On-chain\s*address\s*for\s*first\s*allocation[\r\n\t]*([^\n\r]*)/
-    // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-    const address: string | undefined = matchGroupLargeNotary(regexAddress, issue.body) || matchGroupLargeNotary(regexAddress2, issue.body)
+    const { address } = ldnParser.parseIssue(issue.body)
     if (address == null || address[0] !== 'f') {
       this.logger.warn('Could not find address in issue %s', issue.number)
       return undefined
