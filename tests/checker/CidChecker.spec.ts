@@ -5,6 +5,8 @@ import {fileUploadConfig, setupDatabase, testDatabase} from "./TestSetup";
 import nock from "nock";
 import {ProbotOctokit} from "probot";
 import {Multiaddr} from "multiaddr";
+import { readFileSync } from "fs";
+import  { resolve } from 'path'
 const logger = require('pino')()
 
 describe('CidChecker', () => {
@@ -13,24 +15,19 @@ describe('CidChecker', () => {
   let event: IssuesLabeledEvent
 
   beforeAll(async () => {
+    const issue1Body = readFileSync(
+            resolve(__dirname, '../fixtures/issue-templates/issue-1-ldn_template_yaml.md'),
+            { encoding: 'utf8' },
+        )
     checker = new CidChecker(testDatabase, new ProbotOctokit({ auth: {
        token: 'test-token'
       }}), fileUploadConfig, logger, process.env.IPINFO_TOKEN ?? '',1)
+
     issue = <any>{
       html_url: 'test-url',
       id: 1,
-      body: `# Large Dataset Notary Application
-
-To apply for DataCap to onboard your dataset to Filecoin, please fill out the following.
-
-## Core Information
-- Organization Name: Some Company Inc
-- Website / Social Media: something dot net
-- Total amount of DataCap being requested (between 500 TiB and 5 PiB): 5 PiB
-- Weekly allocation of DataCap requested (usually between 1-100TiB): 100 TiB
-- On-chain address for first allocation: f12345
-
-`, title: '[DataCap Application] My Company - My Project'
+      body: issue1Body, 
+      title: '[DataCap Application] My Company - My Project'
     }
     event = <any>{
       issue: issue,
@@ -51,10 +48,15 @@ To apply for DataCap to onboard your dataset to Filecoin, please fill out the fo
       expect(info).toEqual('f12345')
     })
     it('should find the client issue - bug repro', () => {
+       const issue2Body = readFileSync(
+            resolve(__dirname, '../fixtures/issue-templates/issue-2-ldn_template_yaml.md'),
+            { encoding: 'utf8' },
+        )
+
       const issue2 = <any>{
         html_url: 'test-url',
         id: 1,
-        body: '500TiB\r\n\r\n### On-chain address for first allocation\r\n\r\nf1kyaa43uqypbcsv5isyd4xw7lvgjcumfzqsxag7y\r\n\r\n### Custom multisig',
+        body: issue2Body,
         title: '[DataCap Application] My Company - My Project'
       }
       const info = checker['getClientAddress'](issue2)
