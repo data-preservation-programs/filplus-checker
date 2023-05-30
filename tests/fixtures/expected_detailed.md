@@ -7,6 +7,15 @@
 ### Other Addresses[^2]
  - [fxxxx2](https://filfox.info/en/address/fxxxx2) - [org3](url3)
 
+### Retrieval Statistics
+| Provider | GraphSync Retrievals | GraphSync Success | HTTP Retrievals | HTTP Success | Bitswap Retrievals | Bitswap Success |
+| :------- | -------------------: | ----------------: | --------------: | -----------: | -----------------: | --------------: |
+| Total    |                    0 |                 0 |               0 |            0 |                  0 |               0 |
+
+### Retrieval Statistics Details
+| Provider | Protocol | Result | Count |
+| :------- | -------: | -----: | ----: |
+
 ### Storage Provider Distribution
 The below table shows the distribution of storage providers that have stored data for this client.
 

@@ -41,6 +41,26 @@ export interface ProviderDistributionRow {
   location: string
 }
 
+export interface RetrievalRow {
+  provider: string
+  graphsyncAttempts: number
+  graphsyncSuccessRatio: number
+  graphsyncSuccessRatioStr: string
+  httpAttempts: number
+  httpSuccessRatio: number
+  httpSuccessRatioStr: string
+  bitswapAttempts: number
+  bitswapSuccessRatio: number
+  bitswapSuccessRatioStr: string
+}
+
+export interface RetrievalProviderViewRow {
+  provider: string
+  type: string
+  result: string
+  count: number
+}
+
 export interface ReplicationDistribution {
   num_of_replicas: number
   unique_data_size: string
