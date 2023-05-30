@@ -1,6 +1,11 @@
-## DataCap and CID Checker Report Summary[^1]
+## CID and Retrieval Report Summary[^1]
 ### Other Addresses[^2]
  - [fxxxx2](https://filfox.info/en/address/fxxxx2) - [org3](url3)
+
+### Retrieval Statistics
+* Overall Graphsync retrieval success rate: 
+* Overall HTTP retrieval success rate: 
+* Overall Bitswap retrieval success rate: 
 
 ### Storage Provider Distribution
 ⚠️ 1 storage providers sealed more than 25% of total datacap -  [provider0](https://filfox.info/en/address/provider0): 36.36%

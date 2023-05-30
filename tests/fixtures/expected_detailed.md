@@ -1,4 +1,4 @@
-## DataCap and CID Checker Report[^1]
+## CID and Retrieval Report[^1]
  - Organization: `org1`
  - Client: `f12345`
 ### Approvers
@@ -8,13 +8,21 @@
  - [fxxxx2](https://filfox.info/en/address/fxxxx2) - [org3](url3)
 
 ### Retrieval Statistics
-| Provider | GraphSync Retrievals | GraphSync Success | HTTP Retrievals | HTTP Success | Bitswap Retrievals | Bitswap Success |
-| :------- | -------------------: | ----------------: | --------------: | -----------: | -----------------: | --------------: |
-| Total    |                    0 |                 0 |               0 |            0 |                  0 |               0 |
+| Provider | GraphSync Retrievals | GraphSync Success Ratio | HTTP Retrievals | HTTP Success Ratio | Bitswap Retrievals | Bitswap Success Ratio |
+| :------- | -------------------: | ----------------------: | --------------: | -----------------: | -----------------: | --------------------: |
+| Total    |                    0 |                         |               0 |                    |                  0 |                       |
 
-### Retrieval Statistics Details
-| Provider | Protocol | Result | Count |
-| :------- | -------: | -----: | ----: |
+### Graphsync Retrieval Details
+| Provider | Result | Count |
+| :------- | -----: | ----: |
+
+### Http Retrieval Details
+| Provider | Result | Count |
+| :------- | -----: | ----: |
+
+### Bitswap Retrieval Details
+| Provider | Result | Count |
+| :------- | -----: | ----: |
 
 ### Storage Provider Distribution
 The below table shows the distribution of storage providers that have stored data for this client.
