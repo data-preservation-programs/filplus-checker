@@ -2,7 +2,7 @@ import { Pool } from 'pg'
 import { Logger } from 'pino'
 import CidChecker, { FileUploadConfig } from './checker/CidChecker'
 import { Octokit } from '@octokit/core'
-import {MongoClient} from "mongodb";
+import { MongoClient } from 'mongodb'
 
 export const pool = new Pool()
 export function getCidChecker (logger: Logger): CidChecker {
@@ -18,6 +18,10 @@ export function getCidChecker (logger: Logger): CidChecker {
   const allocationBotId = parseInt(process.env.ALLOCATION_BOT_ID ?? '0')
   if (allocationBotId <= 0 || isNaN(allocationBotId)) {
     throw new Error('ALLOCATION_BOT_ID must be defined')
+  }
+
+  if (process.env.RETRIEVAL_BOT_MONGO_URL === undefined) {
+    throw new Error('RETRIEVAL_BOT_MONGO_URL must be defined')
   }
 
   const fileUploadConfig: FileUploadConfig = {
@@ -36,7 +40,7 @@ export function getCidChecker (logger: Logger): CidChecker {
   })
 
   return new CidChecker(
-    new MongoClient(process.env.RETRIEVAL_BOT_MONGO_URL!).db('prod').collection('task_result'),
+    new MongoClient(process.env.RETRIEVAL_BOT_MONGO_URL).db('prod').collection('task_result'),
     pool,
     octokit,
     fileUploadConfig,
