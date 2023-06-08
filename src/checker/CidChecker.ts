@@ -28,10 +28,10 @@ import { Multiaddr } from 'multiaddr'
 import BarChart, { BarChartEntry } from '../charts/BarChart'
 import GeoMap, { GeoMapEntry } from '../charts/GeoMap'
 import { Chart, LegendOptions } from 'chart.js'
-import { ldnParser } from '@keyko-io/filecoin-verifier-tools'
 import { Collection } from 'mongodb'
 // @ts-expect-error
 import table from 'markdown-table'
+import { parseIssue } from '../ldn-parser-functions/parseIssue'
 
 const RED = 'rgba(255, 99, 132)'
 const GREEN = 'rgba(75, 192, 192)'
@@ -201,7 +201,7 @@ export default class CidChecker {
   }
 
   private getClientAddress (issue: Issue): string | undefined {
-    const { address } = ldnParser.parseIssue(issue.body)
+    const { address } = parseIssue(issue.body ?? '')
     if (address == null || address[0] !== 'f') {
       this.logger.warn('Could not find address in issue %s', issue.number)
       return undefined
