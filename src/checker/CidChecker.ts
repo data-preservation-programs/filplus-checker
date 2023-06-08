@@ -759,7 +759,7 @@ export default class CidChecker {
 
     const content: string[] = []
     const summary: string[] = []
-    const retrieval : string[] = []
+    const retrieval: string[] = []
     const pushBoth = (str: string): void => {
       content.push(str)
       summary.push(str)
@@ -785,7 +785,7 @@ export default class CidChecker {
     summary.push('### Retrieval Statistics')
     const totalRetrieval = retrievalRows[retrievalRows.length - 1]
     if (totalRetrieval.bitswapSuccessRatio < 0.01 && totalRetrieval.graphsyncSuccessRatio < 0.01 && totalRetrieval.httpSuccessRatio < 0.01) {
-      summary.push(emoji.get('warning') + ` All retrieval success ratios are below 1%.`)
+      summary.push(emoji.get('warning') + ' All retrieval success ratios are below 1%.')
     }
     summary.push('* Overall Graphsync retrieval success rate: ' + totalRetrieval.graphsyncSuccessRatioStr)
     summary.push('* Overall HTTP retrieval success rate: ' + totalRetrieval.httpSuccessRatioStr)
@@ -817,13 +817,13 @@ export default class CidChecker {
         return result
       }).sort((a, b) => (a.provider + a.result).localeCompare(b.provider + b.result) ?? 0)
       retrieval.push('### ' + type.charAt(0).toUpperCase() + type.slice(1) + ' Retrieval Details')
-      const headers = ["Provider", "Success"]
+      const headers = ['Provider', 'Success']
       for (const retrievalStat of retrievalProviderRows) {
         if (!headers.includes(retrievalStat.result)) {
           headers.push(retrievalStat.result)
         }
       }
-      const retrievalRows : string[][] = []
+      const retrievalRows: string[][] = []
       for (const provider of providerDistributions) {
         retrievalRows.push([provider.provider])
         for (let i = 1; i < headers.length; i++) {
