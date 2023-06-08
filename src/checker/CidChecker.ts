@@ -12,7 +12,7 @@ import {
   ProviderDistributionWithLocation,
   MinerInfo,
   IpInfoResponse,
-  GetVerifiedClientResponse
+  GetVerifiedClientResponse, RetrievalRow, RetrievalProviderViewRow
 } from './Types'
 import { generateGfmTable, escape, generateLink, wrapInCode } from './MarkdownUtils'
 import xbytes from 'xbytes'
@@ -29,9 +29,13 @@ import BarChart, { BarChartEntry } from '../charts/BarChart'
 import GeoMap, { GeoMapEntry } from '../charts/GeoMap'
 import { Chart, LegendOptions } from 'chart.js'
 import { ldnParser } from '@keyko-io/filecoin-verifier-tools'
+import { Collection } from 'mongodb'
+// @ts-expect-error
+import table from 'markdown-table'
 
 const RED = 'rgba(255, 99, 132)'
 const GREEN = 'rgba(75, 192, 192)'
+
 export interface FileUploadConfig {
   owner: string
   repo: string
@@ -49,6 +53,37 @@ export interface Criteria {
   maxPercentageForLowReplica: number
 }
 
+const errorCodeMap: any = {
+  Success: 'Success',
+  invalid_peerid: 'Invalid Peer ID',
+  no_valid_multiaddrs: 'No Valid Multiaddrs',
+  cannot_connect: 'Cannot Connect to the Provider',
+  not_found: 'Piece not Found',
+  retrieval_failure: 'General retrieval failure',
+  protocol_not_supported: 'Protocol not supported',
+  timeout: 'Retrieval timeout',
+  deal_rejected_price_per_byte_too_low: 'Retrieval not free',
+  deal_rejected_unseal_price_too_low: 'Retrieval not free',
+  throttled: 'Retrieval throttled',
+  no_access: 'No access to the piece',
+  under_maintenance: 'Provider under maintenance',
+  not_online: 'Provider not online',
+  unconfirmed_block_transfer: 'Unconfirmed block transfer',
+  cid_codec_not_supported: 'CID codec not supported',
+  response_rejected: 'Retrieval rejected',
+  deal_state_missing: 'Deal state missing'
+}
+
+interface RetrievalStat {
+  _id: {
+    provider: string
+    module: 'http' | 'graphsync' | 'bitswap'
+    error_code: string
+    success: boolean
+  }
+  total: number
+}
+
 export default class CidChecker {
   private static readonly ErrorTemplate = `
   ## DataCap and CID Checker Report[^1]
@@ -61,6 +96,33 @@ export default class CidChecker {
     return CidChecker.ErrorTemplate.replace('{message}', message)
   }
 
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+  private static retrievalStatsQuery (clients: string[]) {
+    return [
+      {
+        $match: {
+          'task.metadata.client': { $in: clients }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            provider: '$task.provider.id',
+            module: '$task.module',
+            error_code: '$result.error_code',
+            success: '$result.success'
+          },
+          total: {
+            $sum: 1
+          }
+        }
+      }
+    ]
+  }
+
+  private static readonly GetClientShortIdQuery = `SELECT client, client_address
+                                                   from client_mapping
+                                                   where client_address = ANY ($1)`
   private static readonly issueApplicationInfoCache: Map<string, ApplicationInfo | null> = new Map()
   private static readonly ProviderDistributionQuery = `
       WITH miner_pieces AS (SELECT provider,
@@ -69,7 +131,7 @@ export default class CidChecker {
                                    MIN(piece_size) AS piece_size
                             FROM current_state,
                                  client_mapping
-                            WHERE client_address = ANY($1)
+                            WHERE client_address = ANY ($1)
                               AND current_state.client = client_mapping.client
                               AND verified_deal = true
                               AND slash_epoch < 0
@@ -95,7 +157,7 @@ export default class CidChecker {
                                piece_cid
                         FROM current_state,
                              client_mapping
-                        WHERE client_address = ANY($1)
+                        WHERE client_address = ANY ($1)
                           AND current_state.client = client_mapping.client
                           AND verified_deal = true
                           AND slash_epoch < 0
@@ -113,23 +175,23 @@ export default class CidChecker {
       WITH cids AS (SELECT DISTINCT piece_cid
                     FROM current_state,
                          client_mapping
-                    WHERE client_address = ANY($1)
+                    WHERE client_address = ANY ($1)
                       AND current_state.client = client_mapping.client
                       AND current_state.verified_deal = true
                       AND verified_deal = true)
-      SELECT SUM(piece_size)                              AS total_deal_size,
-             COUNT(DISTINCT current_state.piece_cid)::INT AS unique_cid_count,
-             client_address                               as other_client_address
+      SELECT SUM(piece_size) AS total_deal_size,
+             COUNT(DISTINCT current_state.piece_cid)::INT AS unique_cid_count, client_address as other_client_address
       FROM cids,
            current_state,
            client_mapping
       WHERE cids.piece_cid = current_state.piece_cid
         AND current_state.client = client_mapping.client
-        AND NOT (client_address = ANY($1))
+        AND NOT (client_address = ANY ($1))
       GROUP BY client_address
       ORDER BY total_deal_size DESC`
 
   public constructor (
+    private readonly mongo: Collection<Document>,
     private readonly sql: Pool,
     public readonly octokit: Octokit,
     private readonly fileUploadConfig: FileUploadConfig,
@@ -150,6 +212,13 @@ export default class CidChecker {
 
   private static getCurrentEpoch (): number {
     return Math.floor((Date.now() / 1000 - 1598306400) / 30)
+  }
+
+  private async getRetrievalStats (clients: string[]): Promise<RetrievalStat[]> {
+    const clientsResult = await retry(async () => await this.sql.query(CidChecker.GetClientShortIdQuery, [clients]), { retries: 3 })
+    const clientShortIds: string[] = clientsResult.rows.map((row: any) => row.client)
+    const result: any = await this.mongo.aggregate(CidChecker.retrievalStatsQuery(clientShortIds)).toArray()
+    return result
   }
 
   private async getFirstClientByProviders (providers: string[]): Promise<Map<string, string>> {
@@ -225,10 +294,20 @@ export default class CidChecker {
       }
     }
 
-    this.logger.info({ owner: params.owner, repo: params.repo, path: params.path, message: params.message }, 'Uploading file')
+    this.logger.info({
+      owner: params.owner,
+      repo: params.repo,
+      path: params.path,
+      message: params.message
+    }, 'Uploading file')
     const response: Response = await retry(async () => await this.octokit.request('PUT /repos/{owner}/{repo}/contents/{path}', params), { retries: 3 })
 
-    this.logger.info({ owner: params.owner, repo: params.repo, path: params.path, message: params.message }, 'Uploaded file')
+    this.logger.info({
+      owner: params.owner,
+      repo: params.repo,
+      path: params.path,
+      message: params.message
+    }, 'Uploaded file')
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     return [response.data.content!.download_url!, response.data.content!.html_url!]
   }
@@ -367,9 +446,15 @@ export default class CidChecker {
     return approvers.map(([name, count]) => `${wrapInCode(count.toString())}${name}`).join('<br/>')
   }
 
-  private static readonly commentsCache = new Map<number, Array<{ body?: string, user: { login: string | undefined, id: number } | undefined | null }>>()
+  private static readonly commentsCache = new Map<number, Array<{
+    body?: string
+    user: { login: string | undefined, id: number } | undefined | null
+  }>>()
 
-  private async getComments (issueNumber: number, repo: Repository): Promise<Array<{ body?: string, user: { login: string | undefined, id: number } | undefined | null }>> {
+  private async getComments (issueNumber: number, repo: Repository): Promise<Array<{
+    body?: string
+    user: { login: string | undefined, id: number } | undefined | null
+  }>> {
     if (CidChecker.commentsCache.has(issueNumber)) {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       return CidChecker.commentsCache.get(issueNumber)!
@@ -462,6 +547,96 @@ export default class CidChecker {
     return null
   }
 
+  private static ToRetrievalRow (stats: RetrievalStat[]): RetrievalRow[] {
+    const resultMap = new Map<string, RetrievalRow>()
+    resultMap.set('Total', {
+      provider: 'Total',
+      graphsyncAttempts: 0,
+      graphsyncSuccessRatio: 0,
+      bitswapSuccessRatioStr: '',
+      graphsyncSuccessRatioStr: '',
+      httpSuccessRatioStr: '',
+      httpAttempts: 0,
+      httpSuccessRatio: 0,
+      bitswapAttempts: 0,
+      bitswapSuccessRatio: 0
+    })
+
+    stats.forEach(stat => {
+      let row = resultMap.get(stat._id.provider)
+      if (row == null) {
+        row = {
+          provider: stat._id.provider,
+          graphsyncAttempts: 0,
+          graphsyncSuccessRatio: 0,
+          bitswapSuccessRatioStr: '',
+          graphsyncSuccessRatioStr: '',
+          httpSuccessRatioStr: '',
+          httpAttempts: 0,
+          httpSuccessRatio: 0,
+          bitswapAttempts: 0,
+          bitswapSuccessRatio: 0
+        }
+        resultMap.set(stat._id.provider, row)
+      }
+
+      switch (stat._id.module) {
+        case 'graphsync':
+          row.graphsyncAttempts += stat.total
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          resultMap.get('Total')!.graphsyncAttempts += stat.total
+          if (stat._id.success) {
+            row.graphsyncSuccessRatio += stat.total
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            resultMap.get('Total')!.graphsyncSuccessRatio += stat.total
+          }
+          break
+        case 'http':
+          row.httpAttempts++
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          resultMap.get('Total')!.httpAttempts += stat.total
+          if (stat._id.success) {
+            row.httpSuccessRatio += stat.total
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            resultMap.get('Total')!.httpSuccessRatio += stat.total
+          }
+          break
+        case 'bitswap':
+          row.bitswapAttempts += stat.total
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          resultMap.get('Total')!.bitswapAttempts += stat.total
+          if (stat._id.success) {
+            row.bitswapSuccessRatio += stat.total
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            resultMap.get('Total')!.bitswapSuccessRatio += stat.total
+          }
+          break
+      }
+    })
+
+    // Transform counts into ratios
+    for (const row of resultMap.values()) {
+      if (row.graphsyncAttempts > 0) {
+        row.graphsyncSuccessRatio /= row.graphsyncAttempts
+        row.graphsyncSuccessRatioStr = `${(row.graphsyncSuccessRatio * 100).toFixed(2)}%`
+      }
+      if (row.httpAttempts > 0) {
+        row.httpSuccessRatio /= row.httpAttempts
+        row.httpSuccessRatioStr = `${(row.httpSuccessRatio * 100).toFixed(2)}%`
+      }
+      if (row.bitswapAttempts > 0) {
+        row.bitswapSuccessRatio /= row.bitswapAttempts
+        row.bitswapSuccessRatioStr = `${(row.bitswapSuccessRatio * 100).toFixed(2)}%`
+      }
+    }
+
+    const result = Array.from(resultMap.values())
+    // Put Total to the last entry
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    result.push(result.shift()!)
+    return result
+  }
+
   public async check (event: { issue: Issue, repository: Repository }, criterias: Criteria[] = [{
     maxProviderDealPercentage: 0.25,
     maxDuplicationPercentage: 0.20,
@@ -493,31 +668,35 @@ export default class CidChecker {
       addressGroup.push(applicationInfo.clientAddress)
     }
     logger.info({ groups: addressGroup }, 'Retrieved address groups')
-
     const criteria = criterias.length > allocations - 1 ? criterias[allocations - 1] : criterias[criterias.length - 1]
 
-    const [providerDistributions, replicationDistributions, cidSharing] = await Promise.all([(async () => {
-      const result = await this.getStorageProviderDistribution(addressGroup)
-      const providers = result.map(r => r.provider)
-      if (providers.length === 0) {
-        return []
-      }
-      const firstClientByProvider = await this.getFirstClientByProviders(providers)
-      const withLocations: ProviderDistributionWithLocation[] = []
-      for (const item of result) {
-        const location = await this.getLocation(item.provider)
-        const isNew = addressGroup.includes(firstClientByProvider.get(item.provider) ?? '')
-        withLocations.push({ ...item, ...location, new: isNew })
-      }
-      return withLocations.sort((a, b) => a.orgName?.localeCompare(b.orgName ?? '') ?? 0)
-    })(),
-    this.getReplicationDistribution(addressGroup),
-    this.getCidSharing(addressGroup)
-    ])
+    const [retrievalStats, providerDistributions, replicationDistributions, cidSharing] =
+      await Promise.all([
+        this.getRetrievalStats(addressGroup),
+        (async () => {
+          const result = await this.getStorageProviderDistribution(addressGroup)
+          const providers = result.map(r => r.provider)
+          if (providers.length === 0) {
+            return []
+          }
+          const firstClientByProvider = await this.getFirstClientByProviders(providers)
+          const withLocations: ProviderDistributionWithLocation[] = []
+          for (const item of result) {
+            const location = await this.getLocation(item.provider)
+            const isNew = addressGroup.includes(firstClientByProvider.get(item.provider) ?? '')
+            withLocations.push({ ...item, ...location, new: isNew })
+          }
+          return withLocations.sort((a, b) => a.orgName?.localeCompare(b.orgName ?? '') ?? 0)
+        })(),
+        this.getReplicationDistribution(addressGroup),
+        this.getCidSharing(addressGroup)
+      ])
 
     if (providerDistributions.length === 0) {
       return [CidChecker.getErrorContent('No active deals found for this client.'), undefined]
     }
+
+    const retrievalRows: RetrievalRow[] = CidChecker.ToRetrievalRow(retrievalStats)
 
     const providerDistributionRows: ProviderDistributionRow[] = providerDistributions.map(distribution => {
       const totalDealSize = xbytes(parseFloat(distribution.total_deal_size), { iec: true })
@@ -580,12 +759,14 @@ export default class CidChecker {
 
     const content: string[] = []
     const summary: string[] = []
+    const retrieval: string[] = []
     const pushBoth = (str: string): void => {
       content.push(str)
       summary.push(str)
     }
     content.push('## DataCap and CID Checker Report[^1]')
     summary.push('## DataCap and CID Checker Report Summary[^1]')
+    retrieval.push('## Retrieval Report')
     content.push(` - Organization: ${wrapInCode(applicationInfo.organizationName)}`)
     content.push(` - Client: ${wrapInCode(applicationInfo.clientAddress)}`)
     content.push('### Approvers')
@@ -600,6 +781,59 @@ export default class CidChecker {
           pushBoth('')
         }
       }
+    }
+    summary.push('### Retrieval Statistics')
+    const totalRetrieval = retrievalRows[retrievalRows.length - 1]
+    if (totalRetrieval.bitswapSuccessRatio < 0.01 && totalRetrieval.graphsyncSuccessRatio < 0.01 && totalRetrieval.httpSuccessRatio < 0.01) {
+      summary.push(emoji.get('warning') + ' All retrieval success ratios are below 1%.')
+    }
+    summary.push('* Overall Graphsync retrieval success rate: ' + totalRetrieval.graphsyncSuccessRatioStr)
+    summary.push('* Overall HTTP retrieval success rate: ' + totalRetrieval.httpSuccessRatioStr)
+    summary.push('* Overall Bitswap retrieval success rate: ' + totalRetrieval.bitswapSuccessRatioStr)
+    summary.push('')
+    retrieval.push('### Retrieval Statistics')
+    retrieval.push(generateGfmTable(retrievalRows,
+      [
+        ['provider', { name: 'Provider', align: 'l' }],
+        ['graphsyncAttempts', { name: 'GraphSync Retrievals', align: 'r' }],
+        ['graphsyncSuccessRatioStr', { name: 'GraphSync Success Ratio', align: 'r' }],
+        ['httpAttempts', { name: 'HTTP Retrievals', align: 'r' }],
+        ['httpSuccessRatioStr', { name: 'HTTP Success Ratio', align: 'r' }],
+        ['bitswapAttempts', { name: 'Bitswap Retrievals', align: 'r' }],
+        ['bitswapSuccessRatioStr', { name: 'Bitswap Success Ratio', align: 'r' }]
+      ]))
+    retrieval.push('')
+
+    for (const type of ['graphsync', 'http', 'bitswap']) {
+      const retrievalProviderRows: RetrievalProviderViewRow[] = retrievalStats.filter(stat => {
+        return stat._id.module === type
+      }).map(stat => {
+        const result: RetrievalProviderViewRow = {
+          provider: stat._id.provider,
+          type: stat._id.module,
+          result: stat._id.success ? 'Success' : (errorCodeMap[stat._id.error_code] ?? stat._id.error_code),
+          count: stat.total
+        }
+        return result
+      }).sort((a, b) => (a.provider + a.result).localeCompare(b.provider + b.result) ?? 0)
+      retrieval.push('### ' + type.charAt(0).toUpperCase() + type.slice(1) + ' Retrieval Details')
+      const headers = ['Provider', 'Success']
+      for (const retrievalStat of retrievalProviderRows) {
+        if (!headers.includes(retrievalStat.result)) {
+          headers.push(retrievalStat.result)
+        }
+      }
+      const retrievalRows: string[][] = []
+      for (const provider of providerDistributions) {
+        retrievalRows.push([provider.provider])
+        for (let i = 1; i < headers.length; i++) {
+          const count = retrievalProviderRows.find(row => row.provider === provider.provider && row.result === headers[i])?.count ?? 0
+          retrievalRows[retrievalRows.length - 1].push(count.toString())
+        }
+      }
+      const retrievalTable = [headers, ...retrievalRows]
+      retrieval.push(table(retrievalTable))
+      retrieval.push('')
     }
     pushBoth('### Storage Provider Distribution')
     content.push('The below table shows the distribution of storage providers that have stored data for this client.')
@@ -630,7 +864,10 @@ export default class CidChecker {
         providerDistributionHealthy = false
       }
       if (provider.duplication_percentage > criteria.maxDuplicationPercentage) {
-        logger.info({ provider: provider.provider, duplicationFactor: provider.duplication_percentage }, 'Provider exceeds max duplication percentage')
+        logger.info({
+          provider: provider.provider,
+          duplicationFactor: provider.duplication_percentage
+        }, 'Provider exceeds max duplication percentage')
         content.push(emoji.get('warning') + ` ${(provider.duplication_percentage * 100).toFixed(2)}% of total deal sealed by ${providerLink} are duplicate data.`)
         content.push('')
         providersExceedingMaxDuplication.push([provider.provider, provider.duplication_percentage])
@@ -752,9 +989,12 @@ export default class CidChecker {
     pushBoth('[^3]: To manually trigger this report with deals from other related addresses, add a comment with text `checker:manualTrigger <other_address_1> <other_address_2> ...`')
     pushBoth('')
     const joinedContent = content.join('\n')
+    const joinedRetrieval = retrieval.join('\n')
     const contentUrl = await this.uploadReport(joinedContent, event)
+    const retrievalUrl = await this.uploadReport(joinedRetrieval, event)
     summary.push('### Full report')
-    summary.push(`Click ${generateLink('here', contentUrl)} to view the full report.`)
+    summary.push(`Click ${generateLink('here', contentUrl)} to view the CID Checker report.`)
+    summary.push(`Click ${generateLink('here', retrievalUrl)} to view the Retrieval report.`)
     return [summary.join('\n'), joinedContent]
   }
 

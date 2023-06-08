@@ -2,6 +2,12 @@
 ### Other Addresses[^2]
  - [fxxxx2](https://filfox.info/en/address/fxxxx2) - [org3](url3)
 
+### Retrieval Statistics
+⚠️ All retrieval success ratios are below 1%.
+* Overall Graphsync retrieval success rate: 
+* Overall HTTP retrieval success rate: 
+* Overall Bitswap retrieval success rate: 
+
 ### Storage Provider Distribution
 ⚠️ 1 storage providers sealed more than 25% of total datacap -  [provider0](https://filfox.info/en/address/provider0): 36.36%
 
@@ -26,4 +32,5 @@
 [^3]: To manually trigger this report with deals from other related addresses, add a comment with text `checker:manualTrigger <other_address_1> <other_address_2> ...`
 
 ### Full report
-Click [here](undefined) to view the full report.
+Click [here](undefined) to view the CID Checker report.
+Click [here](undefined) to view the Retrieval report.

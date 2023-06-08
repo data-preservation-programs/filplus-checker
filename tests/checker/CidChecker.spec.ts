@@ -19,14 +19,17 @@ describe('CidChecker', () => {
             resolve(__dirname, '../fixtures/issue-templates/issue-1-ldn_template_yaml.md'),
             { encoding: 'utf8' },
         )
-    checker = new CidChecker(testDatabase, new ProbotOctokit({ auth: {
+    const mongo = jasmine.createSpyObj('mongo', {aggregate: {
+      toArray: () => { return Promise.resolve([])}
+      }})
+    checker = new CidChecker(mongo, testDatabase, new ProbotOctokit({ auth: {
        token: 'test-token'
       }}), fileUploadConfig, logger, process.env.IPINFO_TOKEN ?? '',1)
 
     issue = <any>{
       html_url: 'test-url',
       id: 1,
-      body: issue1Body, 
+      body: issue1Body,
       title: '[DataCap Application] My Company - My Project'
     }
     event = <any>{
@@ -281,6 +284,8 @@ describe('CidChecker', () => {
         .reply(201, {content: { "download_url": "./replica.png" }})
         .put(uri => uri.includes("/repos/test-owner/test-repo/contents"))
         .reply(201, {content: { "download_url": "./report.md" }})
+        .put(uri => uri.includes("/repos/test-owner/test-repo/contents"))
+        .reply(201, {content: { "download_url": "./report2.md" }})
       spyOn<any>(checker, 'findApplicationInfoForClient').and.returnValues(
         Promise.resolve({
           organizationName: 'org1',
