@@ -592,7 +592,7 @@ export default class CidChecker {
           }
           break
         case 'http':
-          row.httpAttempts++
+          row.httpAttempts += stat.total
           // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
           resultMap.get('Total')!.httpAttempts += stat.total
           if (stat._id.success) {
