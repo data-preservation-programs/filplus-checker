@@ -32,7 +32,7 @@ jobs:
           postgresql version: '13'
           postgresql db: 'postgres'
           postgresql user: 'postgres'
-          postgresql password: 'postgres'
+          postgresql password: 'password'
 
       - run: npm test
         env:

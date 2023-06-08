@@ -71,7 +71,7 @@ let initialized = false;
 export const testDatabase = new Pool({
   host: 'localhost',
   user: 'postgres',
-  password: 'postgres',
+  password: 'password',
   database: 'postgres',
 })
 

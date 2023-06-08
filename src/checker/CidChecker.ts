@@ -30,6 +30,8 @@ import GeoMap, { GeoMapEntry } from '../charts/GeoMap'
 import { Chart, LegendOptions } from 'chart.js'
 import { ldnParser } from '@keyko-io/filecoin-verifier-tools'
 import { Collection } from 'mongodb'
+// @ts-expect-error
+import table from 'markdown-table'
 
 const RED = 'rgba(255, 99, 132)'
 const GREEN = 'rgba(75, 192, 192)'
@@ -757,12 +759,14 @@ export default class CidChecker {
 
     const content: string[] = []
     const summary: string[] = []
+    const retrieval : string[] = []
     const pushBoth = (str: string): void => {
       content.push(str)
       summary.push(str)
     }
-    content.push('## CID and Retrieval Report[^1]')
-    summary.push('## CID and Retrieval Report Summary[^1]')
+    content.push('## DataCap and CID Checker Report[^1]')
+    summary.push('## DataCap and CID Checker Report Summary[^1]')
+    retrieval.push('## Retrieval Report')
     content.push(` - Organization: ${wrapInCode(applicationInfo.organizationName)}`)
     content.push(` - Client: ${wrapInCode(applicationInfo.clientAddress)}`)
     content.push('### Approvers')
@@ -778,12 +782,17 @@ export default class CidChecker {
         }
       }
     }
-    pushBoth('### Retrieval Statistics')
-    summary.push('* Overall Graphsync retrieval success rate: ' + retrievalRows[retrievalRows.length - 1].graphsyncSuccessRatioStr)
-    summary.push('* Overall HTTP retrieval success rate: ' + retrievalRows[retrievalRows.length - 1].httpSuccessRatioStr)
-    summary.push('* Overall Bitswap retrieval success rate: ' + retrievalRows[retrievalRows.length - 1].bitswapSuccessRatioStr)
+    summary.push('### Retrieval Statistics')
+    const totalRetrieval = retrievalRows[retrievalRows.length - 1]
+    if (totalRetrieval.bitswapSuccessRatio < 0.01 && totalRetrieval.graphsyncSuccessRatio < 0.01 && totalRetrieval.httpSuccessRatio < 0.01) {
+      summary.push(emoji.get('warning') + ` All retrieval success ratios are below 1%.`)
+    }
+    summary.push('* Overall Graphsync retrieval success rate: ' + totalRetrieval.graphsyncSuccessRatioStr)
+    summary.push('* Overall HTTP retrieval success rate: ' + totalRetrieval.httpSuccessRatioStr)
+    summary.push('* Overall Bitswap retrieval success rate: ' + totalRetrieval.bitswapSuccessRatioStr)
     summary.push('')
-    content.push(generateGfmTable(retrievalRows,
+    retrieval.push('### Retrieval Statistics')
+    retrieval.push(generateGfmTable(retrievalRows,
       [
         ['provider', { name: 'Provider', align: 'l' }],
         ['graphsyncAttempts', { name: 'GraphSync Retrievals', align: 'r' }],
@@ -793,9 +802,9 @@ export default class CidChecker {
         ['bitswapAttempts', { name: 'Bitswap Retrievals', align: 'r' }],
         ['bitswapSuccessRatioStr', { name: 'Bitswap Success Ratio', align: 'r' }]
       ]))
-    content.push('')
+    retrieval.push('')
+
     for (const type of ['graphsync', 'http', 'bitswap']) {
-      content.push('### ' + type.charAt(0).toUpperCase() + type.slice(1) + ' Retrieval Details')
       const retrievalProviderRows: RetrievalProviderViewRow[] = retrievalStats.filter(stat => {
         return stat._id.module === type
       }).map(stat => {
@@ -807,13 +816,24 @@ export default class CidChecker {
         }
         return result
       }).sort((a, b) => (a.provider + a.result).localeCompare(b.provider + b.result) ?? 0)
-      content.push(generateGfmTable(retrievalProviderRows,
-        [
-          ['provider', { name: 'Provider', align: 'l' }],
-          ['result', { name: 'Result', align: 'r' }],
-          ['count', { name: 'Count', align: 'r' }]
-        ]))
-      content.push('')
+      retrieval.push('### ' + type.charAt(0).toUpperCase() + type.slice(1) + ' Retrieval Details')
+      const headers = ["Provider", "Success"]
+      for (const retrievalStat of retrievalProviderRows) {
+        if (!headers.includes(retrievalStat.result)) {
+          headers.push(retrievalStat.result)
+        }
+      }
+      const retrievalRows : string[][] = []
+      for (const provider of providerDistributions) {
+        retrievalRows.push([provider.provider])
+        for (let i = 1; i < headers.length; i++) {
+          const count = retrievalProviderRows.find(row => row.provider === provider.provider && row.result === headers[i])?.count ?? 0
+          retrievalRows[retrievalRows.length - 1].push(count.toString())
+        }
+      }
+      const retrievalTable = [headers, ...retrievalRows]
+      retrieval.push(table(retrievalTable))
+      retrieval.push('')
     }
     pushBoth('### Storage Provider Distribution')
     content.push('The below table shows the distribution of storage providers that have stored data for this client.')
@@ -969,9 +989,12 @@ export default class CidChecker {
     pushBoth('[^3]: To manually trigger this report with deals from other related addresses, add a comment with text `checker:manualTrigger <other_address_1> <other_address_2> ...`')
     pushBoth('')
     const joinedContent = content.join('\n')
+    const joinedRetrieval = retrieval.join('\n')
     const contentUrl = await this.uploadReport(joinedContent, event)
+    const retrievalUrl = await this.uploadReport(joinedRetrieval, event)
     summary.push('### Full report')
-    summary.push(`Click ${generateLink('here', contentUrl)} to view the full report.`)
+    summary.push(`Click ${generateLink('here', contentUrl)} to view the CID Checker report.`)
+    summary.push(`Click ${generateLink('here', retrievalUrl)} to view the Retrieval report.`)
     return [summary.join('\n'), joinedContent]
   }
 
