@@ -284,6 +284,8 @@ describe('CidChecker', () => {
         .reply(201, {content: { "download_url": "./replica.png" }})
         .put(uri => uri.includes("/repos/test-owner/test-repo/contents"))
         .reply(201, {content: { "download_url": "./report.md" }})
+        .put(uri => uri.includes("/repos/test-owner/test-repo/contents"))
+        .reply(201, {content: { "download_url": "./report2.md" }})
       spyOn<any>(checker, 'findApplicationInfoForClient').and.returnValues(
         Promise.resolve({
           organizationName: 'org1',
