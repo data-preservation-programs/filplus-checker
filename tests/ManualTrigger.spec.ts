@@ -4,7 +4,7 @@ import * as fs from 'fs';
 xdescribe('manualTrigger', () => {
   jasmine.DEFAULT_TIMEOUT_INTERVAL = 86400000
   it('should trigger the check', async () => {
-    const i = 1126
+    const i = 1483
     console.log(`Triggering ${i}`)
     const event = {
       queryStringParameters: {
