@@ -32,6 +32,7 @@ import { Collection } from 'mongodb'
 // @ts-expect-error
 import table from 'markdown-table'
 import { parseIssue } from '../ldn-parser-functions/parseIssue'
+import LineChart from "../charts/LineChart";
 
 const RED = 'rgba(255, 99, 132)'
 const GREEN = 'rgba(75, 192, 192)'
@@ -84,6 +85,14 @@ interface RetrievalStat {
   total: number
 }
 
+export interface RetrievalWeekly {
+  _id: {
+    week: string
+    module: 'http' | 'graphsync' | 'bitswap'
+  },
+  successRate: number
+}
+
 export default class CidChecker {
   private static readonly ErrorTemplate = `
   ## DataCap and CID Checker Report[^1]
@@ -96,11 +105,76 @@ export default class CidChecker {
     return CidChecker.ErrorTemplate.replace('{message}', message)
   }
 
+  private static retrievalTimeSeriesQuery(clients: string[]) {
+    return [
+      {
+        $match: {
+          'task.requester': 'filplus',
+          'task.metadata.client': { $in: clients }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            week: {
+              $dateToString: {
+                format: "%Y-%m-%d",
+                date: {
+                  $dateFromParts: {
+                    isoWeekYear: { $isoWeekYear: "$created_at" },
+                    isoWeek: { $isoWeek: "$created_at" },
+                    isoDayOfWeek: 1
+                  }
+                }
+              }
+            },
+            module: "$task.module",
+            success: "$result.success"
+          },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            week: "$_id.week",
+            module: "$_id.module"
+          },
+          total: { $sum: "$count" },
+          successCount: {
+            $sum: {
+              $cond: ["$_id.success", "$count", 0]
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          successRate: {
+            $cond: [
+              { $eq: ["$total", 0] },
+              0,
+              { $divide: ["$successCount", "$total"] }
+            ]
+          }
+        }
+      },
+      {
+        $sort: {
+          "_id.week": 1,
+          "_id.module": 1
+        }
+      }
+    ]
+  }
+
   // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   private static retrievalStatsQuery (clients: string[]) {
     return [
       {
         $match: {
+          'task.requester': 'filplus',
           'task.metadata.client': { $in: clients }
         }
       },
@@ -218,6 +292,13 @@ export default class CidChecker {
     const clientsResult = await retry(async () => await this.sql.query(CidChecker.GetClientShortIdQuery, [clients]), { retries: 3 })
     const clientShortIds: string[] = clientsResult.rows.map((row: any) => row.client)
     const result: any = await this.mongo.aggregate(CidChecker.retrievalStatsQuery(clientShortIds)).toArray()
+    return result
+  }
+
+  private async getRetrievalTimeSeries( clients: string[]): Promise<RetrievalWeekly[]> {
+    const clientsResult = await retry(async () => await this.sql.query(CidChecker.GetClientShortIdQuery, [clients]), { retries: 3 })
+    const clientShortIds: string[] = clientsResult.rows.map((row: any) => row.client)
+    const result: any = await this.mongo.aggregate(CidChecker.retrievalTimeSeriesQuery(clientShortIds)).toArray()
     return result
   }
 
@@ -670,9 +751,10 @@ export default class CidChecker {
     logger.info({ groups: addressGroup }, 'Retrieved address groups')
     const criteria = criterias.length > allocations - 1 ? criterias[allocations - 1] : criterias[criterias.length - 1]
 
-    const [retrievalStats, providerDistributions, replicationDistributions, cidSharing] =
+    const [retrievalStats, retrievalTimeSeries, providerDistributions, replicationDistributions, cidSharing] =
       await Promise.all([
         this.getRetrievalStats(addressGroup),
+        this.getRetrievalTimeSeries(addressGroup),
         (async () => {
           const result = await this.getStorageProviderDistribution(addressGroup)
           const providers = result.map(r => r.provider)
@@ -697,6 +779,11 @@ export default class CidChecker {
     }
 
     const retrievalRows: RetrievalRow[] = CidChecker.ToRetrievalRow(retrievalStats)
+    const retrievalWeeklyImage = LineChart.getRetrievalWeeklyImage(retrievalTimeSeries)
+    const retrievalWeeklyImageURL = (await this.uploadFile(
+      `${repository.full_name}/issues/${issue.number}/${Date.now()}.png`,
+      retrievalWeeklyImage,
+      `Upload retrieval weekly image for issue #${issue.number} of ${repository.full_name}`))[0]
 
     const providerDistributionRows: ProviderDistributionRow[] = providerDistributions.map(distribution => {
       const totalDealSize = xbytes(parseFloat(distribution.total_deal_size), { iec: true })
@@ -792,6 +879,8 @@ export default class CidChecker {
     summary.push('* Overall Bitswap retrieval success rate: ' + totalRetrieval.bitswapSuccessRatioStr)
     summary.push('')
     retrieval.push('### Retrieval Statistics')
+    retrieval.push(`<img src="${retrievalWeeklyImageURL}"/>`)
+    retrieval.push('')
     retrieval.push(generateGfmTable(retrievalRows,
       [
         ['provider', { name: 'Provider', align: 'l' }],

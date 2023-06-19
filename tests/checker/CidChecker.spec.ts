@@ -279,6 +279,8 @@ describe('CidChecker', () => {
           {body: '## Request Approved', user: { login: 'usery' }},
           {body: '## Request Approved', user: { login: 'userz' }}])
         .put(uri => uri.includes("/repos/test-owner/test-repo/contents"))
+        .reply(201, {content: { "download_url": "./retrieval.png" }})
+        .put(uri => uri.includes("/repos/test-owner/test-repo/contents"))
         .reply(201, {content: { "download_url": "./provider.png" }})
         .put(uri => uri.includes("/repos/test-owner/test-repo/contents"))
         .reply(201, {content: { "download_url": "./replica.png" }})
