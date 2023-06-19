@@ -1,7 +1,7 @@
 import { createCanvas } from 'canvas'
 import { Chart } from 'chart.js'
 import { RetrievalWeekly } from '../checker/CidChecker'
-// @ts-expect-error
+// @ts-ignore
 require('chartjs-adapter-date-fns')
 
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class
