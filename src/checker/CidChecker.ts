@@ -32,7 +32,7 @@ import { Collection } from 'mongodb'
 // @ts-expect-error
 import table from 'markdown-table'
 import { parseIssue } from '../ldn-parser-functions/parseIssue'
-import LineChart from "../charts/LineChart";
+import LineChart from '../charts/LineChart'
 
 const RED = 'rgba(255, 99, 132)'
 const GREEN = 'rgba(75, 192, 192)'
@@ -89,7 +89,7 @@ export interface RetrievalWeekly {
   _id: {
     week: string
     module: 'http' | 'graphsync' | 'bitswap'
-  },
+  }
   successRate: number
 }
 
@@ -105,7 +105,8 @@ export default class CidChecker {
     return CidChecker.ErrorTemplate.replace('{message}', message)
   }
 
-  private static retrievalTimeSeriesQuery(clients: string[]) {
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+  private static retrievalTimeSeriesQuery (clients: string[]) {
     return [
       {
         $match: {
@@ -118,18 +119,18 @@ export default class CidChecker {
           _id: {
             week: {
               $dateToString: {
-                format: "%Y-%m-%d",
+                format: '%Y-%m-%d',
                 date: {
                   $dateFromParts: {
-                    isoWeekYear: { $isoWeekYear: "$created_at" },
-                    isoWeek: { $isoWeek: "$created_at" },
+                    isoWeekYear: { $isoWeekYear: '$created_at' },
+                    isoWeek: { $isoWeek: '$created_at' },
                     isoDayOfWeek: 1
                   }
                 }
               }
             },
-            module: "$task.module",
-            success: "$result.success"
+            module: '$task.module',
+            success: '$result.success'
           },
           count: { $sum: 1 }
         }
@@ -137,13 +138,13 @@ export default class CidChecker {
       {
         $group: {
           _id: {
-            week: "$_id.week",
-            module: "$_id.module"
+            week: '$_id.week',
+            module: '$_id.module'
           },
-          total: { $sum: "$count" },
+          total: { $sum: '$count' },
           successCount: {
             $sum: {
-              $cond: ["$_id.success", "$count", 0]
+              $cond: ['$_id.success', '$count', 0]
             }
           }
         }
@@ -153,17 +154,17 @@ export default class CidChecker {
           _id: 1,
           successRate: {
             $cond: [
-              { $eq: ["$total", 0] },
+              { $eq: ['$total', 0] },
               0,
-              { $divide: ["$successCount", "$total"] }
+              { $divide: ['$successCount', '$total'] }
             ]
           }
         }
       },
       {
         $sort: {
-          "_id.week": 1,
-          "_id.module": 1
+          '_id.week': 1,
+          '_id.module': 1
         }
       }
     ]
@@ -295,7 +296,7 @@ export default class CidChecker {
     return result
   }
 
-  private async getRetrievalTimeSeries( clients: string[]): Promise<RetrievalWeekly[]> {
+  private async getRetrievalTimeSeries (clients: string[]): Promise<RetrievalWeekly[]> {
     const clientsResult = await retry(async () => await this.sql.query(CidChecker.GetClientShortIdQuery, [clients]), { retries: 3 })
     const clientShortIds: string[] = clientsResult.rows.map((row: any) => row.client)
     const result: any = await this.mongo.aggregate(CidChecker.retrievalTimeSeriesQuery(clientShortIds)).toArray()
