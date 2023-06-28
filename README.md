@@ -53,3 +53,29 @@ A table showing the provider breakdown and number of CIDs that have been shared 
 ### Flagged Report
 
 ![shared-cids-bad](assets/shared-cids-bad.png?raw=true)
+
+# Retrieval Report
+We've created a new report that shows how well clients and SPs are doing in terms of retrievability. It is powered by [RetrievalBot](https://github.com/data-preservation-programs/RetrievalBot)
+
+## Retrieval Statistics
+A time series like below shows how retrieval success rate of each retrieval protocol 
+<img src="https://raw.githubusercontent.com/data-preservation-programs/filplus-checker-assets/main/filecoin-project/filecoin-plus-large-datasets/issues/1483/1687203296469.png"/>
+
+## Break down by Provider
+A table like below will show the success rate of retrieval for each provider of all time.
+| Provider  | GraphSync Retrievals | GraphSync Success Ratio | HTTP Retrievals | HTTP Success Ratio | Bitswap Retrievals | Bitswap Success Ratio |
+| :-------- | -------------------: | ----------------------: | --------------: | -----------------: | -----------------: | --------------------: |
+| f01989866 |                11298 |                   0.00% |           11291 |              0.00% |              11291 |                 0.00% |
+| f01969323 |                 9031 |                   0.00% |            9030 |              0.00% |               9031 |                 0.00% |
+| f033462   |                11607 |                  78.97% |           11610 |              0.00% |              11611 |                 0.00% |
+| f01832393 |                  199 |                  28.64% |             199 |              0.00% |                199 |                 1.01% |
+
+## Break down by error code
+A table like below will show how different types of errors are observed for each provider and retrieval protocol
+| Provider  | Success | Cannot Connect to the Provider | Retrieval timeout | Piece not Found | Retrieval not free | General retrieval failure | Retrieval rejected | Deal state missing |
+| --------- | ------- | ------------------------------ | ----------------- | --------------- | ------------------ | ------------------------- | ------------------ | ------------------ |
+| f01989866 | 0       | 2096                           | 1156              | 7994            | 0                  | 52                        | 0                  | 0                  |
+| f01907545 | 0       | 319                            | 12                | 0               | 0                  | 0                         | 0                  | 0                  |
+| f0750779  | 1653    | 1928                           | 6297              | 3               | 0                  | 0                         | 0                  | 3                  |
+| f0673990  | 0       | 6788                           | 0                 | 0               | 0                  | 0                         | 0                  | 0                  |
+| f01761579 | 61      | 2                              | 7                 | 0               | 0                  | 0                         | 0                  | 0                  |
