@@ -289,16 +289,21 @@ export default class CidChecker {
     return Math.floor((Date.now() / 1000 - 1598306400) / 30)
   }
 
-  private async getRetrievalStats (clients: string[]): Promise<RetrievalStat[]> {
-    const clientsResult = await retry(async () => await this.sql.query(CidChecker.GetClientShortIdQuery, [clients]), { retries: 3 })
-    const clientShortIds: string[] = clientsResult.rows.map((row: any) => row.client)
+  private async getClientShortIDs (clientAddresses: string[]): Promise<string[]> {
+    const result = await retry(async () => await this.sql.query(CidChecker.GetClientShortIdQuery, [clientAddresses]), { retries: 3 })
+    return result.rows.map((row: any) => row.client)
+  }
+
+  private getRetrievalDashboardURL (clientShortIds: string[]): string {
+    return 'https://retrievalbot-dashboard.vercel.app/?clients=' + clientShortIds.join('+')
+  }
+
+  private async getRetrievalStats (clientShortIds: string[]): Promise<RetrievalStat[]> {
     const result: any = await this.mongo.aggregate(CidChecker.retrievalStatsQuery(clientShortIds)).toArray()
     return result
   }
 
-  private async getRetrievalTimeSeries (clients: string[]): Promise<RetrievalWeekly[]> {
-    const clientsResult = await retry(async () => await this.sql.query(CidChecker.GetClientShortIdQuery, [clients]), { retries: 3 })
-    const clientShortIds: string[] = clientsResult.rows.map((row: any) => row.client)
+  private async getRetrievalTimeSeries (clientShortIds: string[]): Promise<RetrievalWeekly[]> {
     const result: any = await this.mongo.aggregate(CidChecker.retrievalTimeSeriesQuery(clientShortIds)).toArray()
     return result
   }
@@ -752,10 +757,12 @@ export default class CidChecker {
     logger.info({ groups: addressGroup }, 'Retrieved address groups')
     const criteria = criterias.length > allocations - 1 ? criterias[allocations - 1] : criterias[criterias.length - 1]
 
+    const shortIDs = await this.getClientShortIDs(addressGroup)
+
     const [retrievalStats, retrievalTimeSeries, providerDistributions, replicationDistributions, cidSharing] =
       await Promise.all([
-        this.getRetrievalStats(addressGroup),
-        this.getRetrievalTimeSeries(addressGroup),
+        this.getRetrievalStats(shortIDs),
+        this.getRetrievalTimeSeries(shortIDs),
         (async () => {
           const result = await this.getStorageProviderDistribution(addressGroup)
           const providers = result.map(r => r.provider)
@@ -1084,6 +1091,7 @@ export default class CidChecker {
     const retrievalUrl = await this.uploadReport(joinedRetrieval, event)
     summary.push('### Full report')
     summary.push(`Click ${generateLink('here', contentUrl)} to view the CID Checker report.`)
+    summary.push(`Click ${generateLink('here', this.getRetrievalDashboardURL(shortIDs))} to view the Retrieval Dashboard.`)
     summary.push(`Click ${generateLink('here', retrievalUrl)} to view the Retrieval report.`)
     return [summary.join('\n'), joinedContent]
   }
