@@ -33,4 +33,5 @@
 
 ### Full report
 Click [here](undefined) to view the CID Checker report.
+Click [here](https://retrievalbot-dashboard.vercel.app/?clients=f01000+f02000) to view the Retrieval Dashboard.
 Click [here](undefined) to view the Retrieval report.
