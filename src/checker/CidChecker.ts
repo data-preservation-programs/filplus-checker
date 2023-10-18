@@ -28,7 +28,6 @@ import { Multiaddr } from 'multiaddr'
 import BarChart, { BarChartEntry } from '../charts/BarChart'
 import GeoMap, { GeoMapEntry } from '../charts/GeoMap'
 import { Chart, LegendOptions } from 'chart.js'
-// @ts-expect-error
 import { parseIssue } from '../ldn-parser-functions/parseIssue'
 
 const RED = 'rgba(255, 99, 132)'
