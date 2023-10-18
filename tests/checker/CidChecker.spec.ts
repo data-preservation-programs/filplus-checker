@@ -19,10 +19,7 @@ describe('CidChecker', () => {
             resolve(__dirname, '../fixtures/issue-templates/issue-1-ldn_template_yaml.md'),
             { encoding: 'utf8' },
         )
-    const mongo = jasmine.createSpyObj('mongo', {aggregate: {
-      toArray: () => { return Promise.resolve([])}
-      }})
-    checker = new CidChecker(mongo, testDatabase, new ProbotOctokit({ auth: {
+    checker = new CidChecker(testDatabase, new ProbotOctokit({ auth: {
        token: 'test-token'
       }}), fileUploadConfig, logger, process.env.IPINFO_TOKEN ?? '',1)
 

@@ -12,7 +12,7 @@ import {
   ProviderDistributionWithLocation,
   MinerInfo,
   IpInfoResponse,
-  GetVerifiedClientResponse, RetrievalRow, RetrievalProviderViewRow
+  GetVerifiedClientResponse
 } from './Types'
 import { generateGfmTable, escape, generateLink, wrapInCode } from './MarkdownUtils'
 import xbytes from 'xbytes'
@@ -28,11 +28,9 @@ import { Multiaddr } from 'multiaddr'
 import BarChart, { BarChartEntry } from '../charts/BarChart'
 import GeoMap, { GeoMapEntry } from '../charts/GeoMap'
 import { Chart, LegendOptions } from 'chart.js'
-import { Collection } from 'mongodb'
 // @ts-expect-error
 import table from 'markdown-table'
 import { parseIssue } from '../ldn-parser-functions/parseIssue'
-import LineChart from '../charts/LineChart'
 
 const RED = 'rgba(255, 99, 132)'
 const GREEN = 'rgba(75, 192, 192)'
@@ -54,45 +52,6 @@ export interface Criteria {
   maxPercentageForLowReplica: number
 }
 
-const errorCodeMap: any = {
-  Success: 'Success',
-  invalid_peerid: 'Invalid Peer ID',
-  no_valid_multiaddrs: 'No Valid Multiaddrs',
-  cannot_connect: 'Cannot Connect to the Provider',
-  not_found: 'Piece not Found',
-  retrieval_failure: 'General retrieval failure',
-  protocol_not_supported: 'Protocol not supported',
-  timeout: 'Retrieval timeout',
-  deal_rejected_price_per_byte_too_low: 'Retrieval not free',
-  deal_rejected_unseal_price_too_low: 'Retrieval not free',
-  throttled: 'Retrieval throttled',
-  no_access: 'No access to the piece',
-  under_maintenance: 'Provider under maintenance',
-  not_online: 'Provider not online',
-  unconfirmed_block_transfer: 'Unconfirmed block transfer',
-  cid_codec_not_supported: 'CID codec not supported',
-  response_rejected: 'Retrieval rejected',
-  deal_state_missing: 'Deal state missing'
-}
-
-interface RetrievalStat {
-  _id: {
-    provider: string
-    module: 'http' | 'graphsync' | 'bitswap'
-    error_code: string
-    success: boolean
-  }
-  total: number
-}
-
-export interface RetrievalWeekly {
-  _id: {
-    week: string
-    module: 'http' | 'graphsync' | 'bitswap'
-  }
-  successRate: number
-}
-
 export default class CidChecker {
   private static readonly ErrorTemplate = `
   ## DataCap and CID Checker Report[^1]
@@ -103,96 +62,6 @@ export default class CidChecker {
 
   private static getErrorContent (message: string): string {
     return CidChecker.ErrorTemplate.replace('{message}', message)
-  }
-
-  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-  private static retrievalTimeSeriesQuery (clients: string[]) {
-    return [
-      {
-        $match: {
-          'task.requester': 'filplus',
-          'task.metadata.client': { $in: clients }
-        }
-      },
-      {
-        $group: {
-          _id: {
-            week: {
-              $dateToString: {
-                format: '%Y-%m-%d',
-                date: {
-                  $dateFromParts: {
-                    isoWeekYear: { $isoWeekYear: '$created_at' },
-                    isoWeek: { $isoWeek: '$created_at' },
-                    isoDayOfWeek: 1
-                  }
-                }
-              }
-            },
-            module: '$task.module',
-            success: '$result.success'
-          },
-          count: { $sum: 1 }
-        }
-      },
-      {
-        $group: {
-          _id: {
-            week: '$_id.week',
-            module: '$_id.module'
-          },
-          total: { $sum: '$count' },
-          successCount: {
-            $sum: {
-              $cond: ['$_id.success', '$count', 0]
-            }
-          }
-        }
-      },
-      {
-        $project: {
-          _id: 1,
-          successRate: {
-            $cond: [
-              { $eq: ['$total', 0] },
-              0,
-              { $divide: ['$successCount', '$total'] }
-            ]
-          }
-        }
-      },
-      {
-        $sort: {
-          '_id.week': 1,
-          '_id.module': 1
-        }
-      }
-    ]
-  }
-
-  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-  private static retrievalStatsQuery (clients: string[]) {
-    return [
-      {
-        $match: {
-          'task.requester': 'filplus',
-          'task.metadata.client': { $in: clients }
-        }
-      },
-      {
-        $group: {
-          _id: {
-            provider: '$task.provider.id',
-            module: '$task.module',
-            error_code: '$result.error_code',
-            success: '$result.success'
-          },
-          total: {
-            $sum: 1
-          }
-        }
-      }
-    ]
   }
 
   private static readonly GetClientShortIdQuery = `SELECT client, client_address
@@ -266,7 +135,6 @@ export default class CidChecker {
       ORDER BY total_deal_size DESC`
 
   public constructor (
-    private readonly mongo: Collection<Document>,
     private readonly sql: Pool,
     public readonly octokit: Octokit,
     private readonly fileUploadConfig: FileUploadConfig,
@@ -296,16 +164,6 @@ export default class CidChecker {
 
   private getRetrievalDashboardURL (clientShortIds: string[]): string {
     return 'https://retrievalbot-dashboard.vercel.app/?clients=' + clientShortIds.join('+')
-  }
-
-  private async getRetrievalStats (clientShortIds: string[]): Promise<RetrievalStat[]> {
-    const result: any = await this.mongo.aggregate(CidChecker.retrievalStatsQuery(clientShortIds)).toArray()
-    return result
-  }
-
-  private async getRetrievalTimeSeries (clientShortIds: string[]): Promise<RetrievalWeekly[]> {
-    const result: any = await this.mongo.aggregate(CidChecker.retrievalTimeSeriesQuery(clientShortIds)).toArray()
-    return result
   }
 
   private async getFirstClientByProviders (providers: string[]): Promise<Map<string, string>> {
@@ -634,96 +492,6 @@ export default class CidChecker {
     return null
   }
 
-  private static ToRetrievalRow (stats: RetrievalStat[]): RetrievalRow[] {
-    const resultMap = new Map<string, RetrievalRow>()
-    resultMap.set('Total', {
-      provider: 'Total',
-      graphsyncAttempts: 0,
-      graphsyncSuccessRatio: 0,
-      bitswapSuccessRatioStr: '',
-      graphsyncSuccessRatioStr: '',
-      httpSuccessRatioStr: '',
-      httpAttempts: 0,
-      httpSuccessRatio: 0,
-      bitswapAttempts: 0,
-      bitswapSuccessRatio: 0
-    })
-
-    stats.forEach(stat => {
-      let row = resultMap.get(stat._id.provider)
-      if (row == null) {
-        row = {
-          provider: stat._id.provider,
-          graphsyncAttempts: 0,
-          graphsyncSuccessRatio: 0,
-          bitswapSuccessRatioStr: '',
-          graphsyncSuccessRatioStr: '',
-          httpSuccessRatioStr: '',
-          httpAttempts: 0,
-          httpSuccessRatio: 0,
-          bitswapAttempts: 0,
-          bitswapSuccessRatio: 0
-        }
-        resultMap.set(stat._id.provider, row)
-      }
-
-      switch (stat._id.module) {
-        case 'graphsync':
-          row.graphsyncAttempts += stat.total
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          resultMap.get('Total')!.graphsyncAttempts += stat.total
-          if (stat._id.success) {
-            row.graphsyncSuccessRatio += stat.total
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            resultMap.get('Total')!.graphsyncSuccessRatio += stat.total
-          }
-          break
-        case 'http':
-          row.httpAttempts += stat.total
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          resultMap.get('Total')!.httpAttempts += stat.total
-          if (stat._id.success) {
-            row.httpSuccessRatio += stat.total
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            resultMap.get('Total')!.httpSuccessRatio += stat.total
-          }
-          break
-        case 'bitswap':
-          row.bitswapAttempts += stat.total
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          resultMap.get('Total')!.bitswapAttempts += stat.total
-          if (stat._id.success) {
-            row.bitswapSuccessRatio += stat.total
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            resultMap.get('Total')!.bitswapSuccessRatio += stat.total
-          }
-          break
-      }
-    })
-
-    // Transform counts into ratios
-    for (const row of resultMap.values()) {
-      if (row.graphsyncAttempts > 0) {
-        row.graphsyncSuccessRatio /= row.graphsyncAttempts
-        row.graphsyncSuccessRatioStr = `${(row.graphsyncSuccessRatio * 100).toFixed(2)}%`
-      }
-      if (row.httpAttempts > 0) {
-        row.httpSuccessRatio /= row.httpAttempts
-        row.httpSuccessRatioStr = `${(row.httpSuccessRatio * 100).toFixed(2)}%`
-      }
-      if (row.bitswapAttempts > 0) {
-        row.bitswapSuccessRatio /= row.bitswapAttempts
-        row.bitswapSuccessRatioStr = `${(row.bitswapSuccessRatio * 100).toFixed(2)}%`
-      }
-    }
-
-    const result = Array.from(resultMap.values())
-    // Put Total to the last entry
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    result.push(result.shift()!)
-    return result
-  }
-
   public async check (event: { issue: Issue, repository: Repository }, criterias: Criteria[] = [{
     maxProviderDealPercentage: 0.25,
     maxDuplicationPercentage: 0.20,
@@ -759,10 +527,8 @@ export default class CidChecker {
 
     const shortIDs = await this.getClientShortIDs(addressGroup)
 
-    const [retrievalStats, retrievalTimeSeries, providerDistributions, replicationDistributions, cidSharing] =
+    const [providerDistributions, replicationDistributions, cidSharing] =
       await Promise.all([
-        this.getRetrievalStats(shortIDs),
-        this.getRetrievalTimeSeries(shortIDs),
         (async () => {
           const result = await this.getStorageProviderDistribution(addressGroup)
           const providers = result.map(r => r.provider)
@@ -785,13 +551,6 @@ export default class CidChecker {
     if (providerDistributions.length === 0) {
       return [CidChecker.getErrorContent('No active deals found for this client.'), undefined]
     }
-
-    const retrievalRows: RetrievalRow[] = CidChecker.ToRetrievalRow(retrievalStats)
-    const retrievalWeeklyImage = LineChart.getRetrievalWeeklyImage(retrievalTimeSeries)
-    const retrievalWeeklyImageURL = (await this.uploadFile(
-      `${repository.full_name}/issues/${issue.number}/${Date.now()}.png`,
-      retrievalWeeklyImage,
-      `Upload retrieval weekly image for issue #${issue.number} of ${repository.full_name}`))[0]
 
     const providerDistributionRows: ProviderDistributionRow[] = providerDistributions.map(distribution => {
       const totalDealSize = xbytes(parseFloat(distribution.total_deal_size), { iec: true })
@@ -854,14 +613,12 @@ export default class CidChecker {
 
     const content: string[] = []
     const summary: string[] = []
-    const retrieval: string[] = []
     const pushBoth = (str: string): void => {
       content.push(str)
       summary.push(str)
     }
     content.push('## DataCap and CID Checker Report[^1]')
     summary.push('## DataCap and CID Checker Report Summary[^1]')
-    retrieval.push('## Retrieval Report')
     content.push(` - Organization: ${wrapInCode(applicationInfo.organizationName)}`)
     content.push(` - Client: ${wrapInCode(applicationInfo.clientAddress)}`)
     content.push('### Approvers')
@@ -877,61 +634,7 @@ export default class CidChecker {
         }
       }
     }
-    summary.push('### Retrieval Statistics')
-    const totalRetrieval = retrievalRows[retrievalRows.length - 1]
-    if (totalRetrieval.bitswapSuccessRatio < 0.01 && totalRetrieval.graphsyncSuccessRatio < 0.01 && totalRetrieval.httpSuccessRatio < 0.01) {
-      summary.push(emoji.get('warning') + ' All retrieval success ratios are below 1%.')
-    }
-    summary.push('* Overall Graphsync retrieval success rate: ' + totalRetrieval.graphsyncSuccessRatioStr)
-    summary.push('* Overall HTTP retrieval success rate: ' + totalRetrieval.httpSuccessRatioStr)
-    summary.push('* Overall Bitswap retrieval success rate: ' + totalRetrieval.bitswapSuccessRatioStr)
-    summary.push('')
-    retrieval.push('### Retrieval Statistics')
-    retrieval.push(`<img src="${retrievalWeeklyImageURL}"/>`)
-    retrieval.push('')
-    retrieval.push(generateGfmTable(retrievalRows,
-      [
-        ['provider', { name: 'Provider', align: 'l' }],
-        ['graphsyncAttempts', { name: 'GraphSync Retrievals', align: 'r' }],
-        ['graphsyncSuccessRatioStr', { name: 'GraphSync Success Ratio', align: 'r' }],
-        ['httpAttempts', { name: 'HTTP Retrievals', align: 'r' }],
-        ['httpSuccessRatioStr', { name: 'HTTP Success Ratio', align: 'r' }],
-        ['bitswapAttempts', { name: 'Bitswap Retrievals', align: 'r' }],
-        ['bitswapSuccessRatioStr', { name: 'Bitswap Success Ratio', align: 'r' }]
-      ]))
-    retrieval.push('')
-
-    for (const type of ['graphsync', 'http', 'bitswap']) {
-      const retrievalProviderRows: RetrievalProviderViewRow[] = retrievalStats.filter(stat => {
-        return stat._id.module === type
-      }).map(stat => {
-        const result: RetrievalProviderViewRow = {
-          provider: stat._id.provider,
-          type: stat._id.module,
-          result: stat._id.success ? 'Success' : (errorCodeMap[stat._id.error_code] ?? stat._id.error_code),
-          count: stat.total
-        }
-        return result
-      }).sort((a, b) => (a.provider + a.result).localeCompare(b.provider + b.result) ?? 0)
-      retrieval.push('### ' + type.charAt(0).toUpperCase() + type.slice(1) + ' Retrieval Details')
-      const headers = ['Provider', 'Success']
-      for (const retrievalStat of retrievalProviderRows) {
-        if (!headers.includes(retrievalStat.result)) {
-          headers.push(retrievalStat.result)
-        }
-      }
-      const retrievalRows: string[][] = []
-      for (const provider of providerDistributions) {
-        retrievalRows.push([provider.provider])
-        for (let i = 1; i < headers.length; i++) {
-          const count = retrievalProviderRows.find(row => row.provider === provider.provider && row.result === headers[i])?.count ?? 0
-          retrievalRows[retrievalRows.length - 1].push(count.toString())
-        }
-      }
-      const retrievalTable = [headers, ...retrievalRows]
-      retrieval.push(table(retrievalTable))
-      retrieval.push('')
-    }
+    content.push('')
     pushBoth('### Storage Provider Distribution')
     content.push('The below table shows the distribution of storage providers that have stored data for this client.')
     content.push('')
@@ -1086,13 +789,10 @@ export default class CidChecker {
     pushBoth('[^3]: To manually trigger this report with deals from other related addresses, add a comment with text `checker:manualTrigger <other_address_1> <other_address_2> ...`')
     pushBoth('')
     const joinedContent = content.join('\n')
-    const joinedRetrieval = retrieval.join('\n')
     const contentUrl = await this.uploadReport(joinedContent, event)
-    const retrievalUrl = await this.uploadReport(joinedRetrieval, event)
     summary.push('### Full report')
     summary.push(`Click ${generateLink('here', contentUrl)} to view the CID Checker report.`)
     summary.push(`Click ${generateLink('here', this.getRetrievalDashboardURL(shortIDs))} to view the Retrieval Dashboard.`)
-    summary.push(`Click ${generateLink('here', retrievalUrl)} to view the Retrieval report.`)
     return [summary.join('\n'), joinedContent]
   }
 

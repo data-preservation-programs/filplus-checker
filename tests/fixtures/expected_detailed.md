@@ -7,6 +7,7 @@
 ### Other Addresses[^2]
  - [fxxxx2](https://filfox.info/en/address/fxxxx2) - [org3](url3)
 
+
 ### Storage Provider Distribution
 The below table shows the distribution of storage providers that have stored data for this client.
 
@@ -40,7 +41,7 @@ For most of the datacap application, below restrictions should apply.
 | [provider3](https://filfox.info/en/address/provider3)`new`  | city4, region4, US<br/>`Unknown` |           100.00 B |      9.09% |    100.00 B |           0.00% |
 | [provider1](https://filfox.info/en/address/provider1)`new`  |            Unknown<br/>`Unknown` |           100.00 B |      9.09% |    100.00 B |           0.00% |
 
-<img src="./provider.png"/>
+<img src="./retrieval.png"/>
 
 ### Deal Data Replication
 The below table shows how each many unique data are replicated across storage providers.
@@ -54,7 +55,7 @@ The below table shows how each many unique data are replicated across storage pr
 |         300.00 B |         700.00 B |                   1 |          63.64% |
 |         100.00 B |         400.00 B |                   4 |          36.36% |
 
-<img src="./replica.png"/>
+<img src="./provider.png"/>
 
 ### Deal Data Shared with other Clients[^3]
 The below table shows how many unique data are shared with other clients.
